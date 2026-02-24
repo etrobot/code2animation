@@ -1,0 +1,146 @@
+[
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 1000000,
+          "Duration": 2875000,
+          "text": {
+            "Text": "对",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 4000000,
+          "Duration": 2125000,
+          "text": {
+            "Text": "每",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 6125000,
+          "Duration": 2375000,
+          "text": {
+            "Text": "一个",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 8625000,
+          "Duration": 5125000,
+          "text": {
+            "Text": "像素",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 15000000,
+          "Duration": 1375000,
+          "text": {
+            "Text": "都",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 16375000,
+          "Duration": 1625000,
+          "text": {
+            "Text": "有",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 18250000,
+          "Duration": 4375000,
+          "text": {
+            "Text": "绝对",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 22625000,
+          "Duration": 750000,
+          "text": {
+            "Text": "的",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 23500000,
+          "Duration": 6125000,
+          "text": {
+            "Text": "控制权",
+            "Length": 3,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  }
+]

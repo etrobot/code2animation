@@ -1,0 +1,162 @@
+[
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 1000000,
+          "Duration": 3125000,
+          "text": {
+            "Text": "只需",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 4375000,
+          "Duration": 2750000,
+          "text": {
+            "Text": "提出",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 7250000,
+          "Duration": 4250000,
+          "text": {
+            "Text": "要求",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 14000000,
+          "Duration": 1000000,
+          "text": {
+            "Text": "我",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 15125000,
+          "Duration": 1500000,
+          "text": {
+            "Text": "就",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 16625000,
+          "Duration": 1375000,
+          "text": {
+            "Text": "会",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 18125000,
+          "Duration": 1750000,
+          "text": {
+            "Text": "为",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 19875000,
+          "Duration": 875000,
+          "text": {
+            "Text": "你",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 21000000,
+          "Duration": 4000000,
+          "text": {
+            "Text": "生成",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 25125000,
+          "Duration": 4125000,
+          "text": {
+            "Text": "代码",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  }
+]

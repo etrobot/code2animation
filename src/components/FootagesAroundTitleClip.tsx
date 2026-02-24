@@ -1,0 +1,228 @@
+import React, { useEffect, useState } from 'react';
+import { VideoClip } from '../types';
+import './FootagesAroundTitleClip.css';
+
+interface Props {
+  clip: VideoClip;
+  currentTime: number;
+  projectId: string;
+  clipIndex: number;
+  duration: number;
+}
+
+const RotatingBackground: React.FC<{ className?: string; backgroundSrc?: string; currentTime?: number }> = ({
+  className,
+  backgroundSrc,
+  currentTime
+}) => {
+  return (
+    <div className={`rotating-background ${className}`}>
+      <div
+        className="rotating-background-inner"
+        style={{
+          backgroundImage: backgroundSrc ? `url(${backgroundSrc})` : 'linear-gradient(45deg, #1a1a1a, #000)',
+          animationPlayState: currentTime !== undefined ? 'paused' : 'running',
+          animationDelay: currentTime !== undefined ? `-${currentTime}s` : '0s'
+        }}
+      />
+    </div>
+  );
+};
+
+export const FootagesAroundTitleClip: React.FC<Props> = ({ clip, currentTime, projectId, clipIndex, duration }) => {
+  const [wordTimings, setWordTimings] = useState<Record<string, number>>({});
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Deterministic state derivation for rendering
+  // @ts-ignore
+  const isRendering = window.suppressTTS === true;
+
+  // Register with renderer if in rendering mode (based on snippet)
+  useEffect(() => {
+    if (!isRendering) return;
+    // @ts-ignore
+    if (typeof window.__registerComponent === 'function') {
+      // @ts-ignore
+      const unregister = window.__registerComponent('FootagesAroundTitleClip');
+      return () => unregister();
+    }
+  }, [isRendering]);
+
+  // Update ready status for rendering mode
+  useEffect(() => {
+    if (!isRendering) return;
+    // @ts-ignore
+    window.__isReady_FootagesAroundTitleClip = isLoaded;
+  }, [isLoaded, isRendering]);
+
+  // Fetch word timings
+  useEffect(() => {
+    setWordTimings({});
+    if (projectId && clipIndex !== undefined) {
+      if (isRendering) setIsLoaded(false);
+      const fetchTimings = async () => {
+        try {
+          const response = await fetch(`/audio/${projectId}/${clipIndex}.json`);
+          if (!response.ok) throw new Error('Failed to fetch timings');
+          const data = await response.json();
+          const timings: Record<string, number> = {};
+
+          data.forEach((item: any) => {
+            const entry = item.Metadata?.[0]?.Data || item;
+            if (entry.Type === 'WordBoundary' || item.Type === 'WordBoundary') {
+              const evt = entry.Type === 'WordBoundary' ? entry : item;
+              // Azure TTS format: text.Text or just Text
+              const textValue = (evt.text?.Text || evt.Text || '').toLowerCase().replace(/[.,!?;:'"()]/g, '');
+              // 10,000,000 ticks = 1 second
+              timings[textValue] = evt.Offset / 10000000;
+            }
+          });
+          setWordTimings(timings);
+          if (isRendering) setIsLoaded(true);
+        } catch (e) {
+          console.warn('Word timings fetch failed', e);
+          setWordTimings({});
+          if (isRendering) setIsLoaded(true);
+        }
+      };
+      fetchTimings();
+    } else {
+      if (isRendering) setIsLoaded(true);
+    }
+  }, [projectId, clipIndex, isRendering]);
+
+  // Calculate effective states based on reference logic
+  let animState: 'visible' | 'exiting' | 'hidden' = 'visible';
+  let isContentVisible = true;
+
+  if (currentTime < 0.1) {
+    animState = 'hidden';
+    isContentVisible = false;
+  } else if (currentTime < 0.6) {
+    animState = 'visible';
+    isContentVisible = true;
+  } else if (currentTime > duration - 0.6) {
+    animState = 'exiting';
+    isContentVisible = false;
+  } else {
+    animState = 'visible';
+    isContentVisible = true;
+  }
+
+  const isVisibleStyle = animState !== 'hidden';
+
+  return (
+    <div
+      className={`intro-overlay ${animState} align-center`}
+      style={{
+        visibility: isVisibleStyle ? 'visible' : 'hidden',
+        opacity: isVisibleStyle ? 1 : 0,
+      }}
+    >
+      <div className="intro-overlay-backdrop" />
+
+      <RotatingBackground
+        className="opacity-100"
+        backgroundSrc={clip.media?.[0]?.src}
+        currentTime={isRendering ? currentTime : undefined}
+      />
+
+      <div className={`intro-overlay-content ${isContentVisible ? 'content-visible' : 'content-hidden'}`}>
+        <div className="intro-text-section">
+          <h1
+            className="intro-title"
+            style={{
+              whiteSpace: 'pre-line',
+              animationPlayState: isRendering ? 'paused' : 'running',
+              animationDelay: isRendering ? `-${currentTime}s` : '0s'
+            }}
+          >
+            {(clip.title || '').split('\n').map((line, lineIdx) => {
+              const previousLines = (clip.title || '').split('\n').slice(0, lineIdx);
+              const prevWordsCount = previousLines.join(' ').split(/\s+/).filter(Boolean).length;
+
+              const hasSpaces = /\s/.test(line);
+              const segments = hasSpaces ? line.split(/\s+/) : [...line];
+
+              return (
+                <div key={lineIdx} className="intro-title-line">
+                  {segments.map((seg, segIdx) => {
+                    const wordDelay = (prevWordsCount + segIdx) * 0.08;
+
+                    return (
+                      <span
+                        key={segIdx}
+                        className={`intro-title-word ${hasSpaces ? 'is-word' : 'is-char'}`}
+                        style={{
+                          animationDelay: isRendering ? `${wordDelay - currentTime}s` : `${wordDelay}s`,
+                          animationPlayState: isRendering ? 'paused' : 'running',
+                          marginRight: hasSpaces ? '0.25em' : '0'
+                        }}
+                      >
+                        {seg}
+                      </span>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </h1>
+        </div>
+
+        {clip.media && clip.media.length > 0 && (
+          <div className="intro-media-container">
+            {clip.media.map((item, idx) => {
+              const targetWord = item.word.toLowerCase().replace(/[.,!?;:'"()]/g, '');
+              let delay = 0;
+
+              if (wordTimings[targetWord] !== undefined) {
+                delay = wordTimings[targetWord];
+              } else {
+                const matchedKey = Object.keys(wordTimings).find(key =>
+                  key === targetWord || key.startsWith(targetWord) || targetWord.startsWith(key)
+                );
+
+                if (matchedKey) {
+                  delay = wordTimings[matchedKey];
+                } else {
+                  delay = (idx * 0.5) + 1.2;
+                }
+              }
+
+              const finalDelay = Math.max(0, delay - 0.4);
+              const isMediaVisible = !isRendering || currentTime >= (finalDelay - 0.1);
+
+              return (
+                <div
+                  key={`${item.src}-${idx}`}
+                  className={`intro-media-item anim-fly-in-${idx % 3} ${isMediaVisible ? 'opacity-100' : 'opacity-0'}`}
+                  style={{
+                    animationPlayState: isRendering ? 'paused' : 'running',
+                    animationDelay: isRendering ? `${finalDelay - currentTime}s` : `${finalDelay}s`,
+                    // For floating animation delay
+                    transition: 'opacity 0.3s ease'
+                  }}
+                >
+                  {item.src.toLowerCase().endsWith('.html') ? (
+                    <iframe
+                      src={item.src}
+                      className="intro-media-floating-content border-none bg-transparent"
+                      title={item.word}
+                      allowTransparency={true}
+                    />
+                  ) : (
+                    <img
+                      src={item.src}
+                      alt={item.word}
+                      className="intro-media-floating-content"
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

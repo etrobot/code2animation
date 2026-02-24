@@ -1,0 +1,130 @@
+[
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 1000000,
+          "Duration": 2375000,
+          "text": {
+            "Text": "不要",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 3500000,
+          "Duration": 1625000,
+          "text": {
+            "Text": "再",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 5125000,
+          "Duration": 7500000,
+          "text": {
+            "Text": "浪费时间",
+            "Length": 4,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 13625000,
+          "Duration": 4375000,
+          "text": {
+            "Text": "手动",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 18125000,
+          "Duration": 3500000,
+          "text": {
+            "Text": "设置",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 21875000,
+          "Duration": 3625000,
+          "text": {
+            "Text": "关键",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 25500000,
+          "Duration": 2625000,
+          "text": {
+            "Text": "帧",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 28125000,
+          "Duration": 1750000,
+          "text": {
+            "Text": "了",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  }
+]
