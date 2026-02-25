@@ -15,7 +15,7 @@ export const TypographyClip: React.FC<Props> = ({ clip, currentTime, projectId, 
   const accentColor = '#FFF';
 
   return (
-    <div className={`relative w-full h-full flex flex-col items-center justify-center ${bgColor} overflow-hidden`}>
+    <div className={`relative w-full h-full flex flex-col items-center justify-center bg-transparent overflow-hidden`}>
       {/* Background Grid */}
       <div
         className="absolute inset-0 opacity-20"

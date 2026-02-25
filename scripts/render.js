@@ -4,6 +4,18 @@ import path from 'path';
 import fs from 'fs';
 import os from 'os';
 
+// Logger with levels
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info'; // debug, info, warn, error
+const LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
+const currentLevel = LEVELS[LOG_LEVEL] || LEVELS.info;
+
+const log = {
+  debug: (...args) => currentLevel <= LEVELS.debug && console.log('[DEBUG]', ...args),
+  info: (...args) => currentLevel <= LEVELS.info && console.log('[INFO]', ...args),
+  warn: (...args) => currentLevel <= LEVELS.warn && console.warn('[WARN]', ...args),
+  error: (...args) => currentLevel <= LEVELS.error && console.error('[ERROR]', ...args),
+};
+
 const args = process.argv.slice(2);
 const projectId = args.find(arg => !arg.startsWith('--'));
 const forceAudio = args.includes('--force-audio');
@@ -18,7 +30,7 @@ function getArgValue(name) {
 }
 
 if (!projectId) {
-  console.error('Please specify a project ID');
+  log.error('Please specify a project ID');
   process.exit(1);
 }
 
@@ -46,152 +58,117 @@ fs.mkdirSync(FRAMES_DIR, { recursive: true });
 
 function detectBrowserExecutable() {
   if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
-  const platform = os.platform();
+  
+  const candidates = os.platform() === 'darwin'
+    ? [
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Chromium.app/Contents/MacOS/Chromium',
+        '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+      ]
+    : ['google-chrome', 'chromium', 'brave-browser'];
 
-  if (platform === 'darwin') {
-    const candidates = [
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      '/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary',
-      '/Applications/Chromium.app/Contents/MacOS/Chromium',
-      '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
-      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'
-    ];
-    for (const p of candidates) {
+  for (const p of candidates) {
+    if (os.platform() === 'darwin') {
       if (fs.existsSync(p)) return p;
-    }
-  }
-
-  const candidates = ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser', 'brave-browser', 'brave'];
-  for (const name of candidates) {
-    try {
-      const result = execSync(`which ${name}`, { encoding: 'utf-8' }).trim();
-      if (result) return result;
-    } catch {
+    } else {
+      try {
+        const result = execSync(`which ${p}`, { encoding: 'utf-8' }).trim();
+        if (result) return result;
+      } catch {}
     }
   }
   return null;
 }
 
+function probeDurationSeconds(filePath) {
+  const result = spawnSync('ffprobe', [
+    '-v', 'error', '-show_entries', 'format=duration',
+    '-of', 'default=noprint_wrappers=1:nokey=1', filePath
+  ], { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'ignore'] });
+  
+  if (result.status !== 0) return null;
+  const value = Number.parseFloat(String(result.stdout || '').trim());
+  return (Number.isFinite(value) && value > 0) ? value : null;
+}
+
+function getDurationFromJson(jsonPath) {
+  const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+  if (!Array.isArray(data)) return 0;
+
+  let maxEndSeconds = 0;
+  for (const entry of data) {
+    if (!entry || typeof entry !== 'object') continue;
+    
+    const candidates = [entry, ...(Array.isArray(entry.Metadata) ? entry.Metadata : [])];
+    for (const c of candidates) {
+      if (c?.Type !== 'WordBoundary') continue;
+      const dataObj = c.Data || c;
+      const offset = Number(dataObj.Offset);
+      const dur = Number(dataObj.Duration);
+      if (Number.isFinite(offset) && Number.isFinite(dur)) {
+        maxEndSeconds = Math.max(maxEndSeconds, (offset + dur) / 10000000);
+      }
+    }
+  }
+  return maxEndSeconds > 0 ? maxEndSeconds + 0.6 : 0;
+}
+
 function loadRenderTimings(audioDir) {
   if (!fs.existsSync(audioDir)) return [];
-  const probeDurationSeconds = (filePath) => {
-    const result = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', filePath], {
-      encoding: 'utf-8',
-      stdio: ['ignore', 'pipe', 'ignore']
-    });
-    if (result.status !== 0) return null;
-    const value = Number.parseFloat(String(result.stdout || '').trim());
-    if (!Number.isFinite(value) || value <= 0) return null;
-    return value;
-  };
 
-  const files = fs.readdirSync(audioDir);
   const indices = new Set();
-
-  for (const f of files) {
+  for (const f of fs.readdirSync(audioDir)) {
     const ext = path.extname(f).toLowerCase();
-    if (ext !== '.mp3' && ext !== '.json') continue;
-    const idx = Number.parseInt(path.basename(f, ext), 10);
-    if (Number.isFinite(idx)) indices.add(idx);
+    if (ext === '.mp3' || ext === '.json') {
+      const idx = Number.parseInt(path.basename(f, ext), 10);
+      if (Number.isFinite(idx)) indices.add(idx);
+    }
   }
-
-  const indexed = Array.from(indices).sort((a, b) => a - b).map(index => ({ index }));
 
   const timings = [];
   let currentStart = 0;
-  for (const item of indexed) {
+  
+  for (const index of Array.from(indices).sort((a, b) => a - b)) {
+    let duration = 4; // default
     try {
-      let duration = null;
-      const mp3Path = path.join(audioDir, `${item.index}.mp3`);
-      if (fs.existsSync(mp3Path)) {
-        duration = probeDurationSeconds(mp3Path);
+      const mp3Path = path.join(audioDir, `${index}.mp3`);
+      duration = fs.existsSync(mp3Path) ? probeDurationSeconds(mp3Path) : null;
+      
+      if (!duration) {
+        const jsonPath = path.join(audioDir, `${index}.json`);
+        duration = getDurationFromJson(jsonPath) || 4;
       }
-
-      if (!Number.isFinite(duration) || duration <= 0) {
-        const jsonPath = path.join(audioDir, `${item.index}.json`);
-        const raw = fs.readFileSync(jsonPath, 'utf-8');
-        const data = JSON.parse(raw);
-        let maxEndSeconds = 0;
-
-        if (Array.isArray(data)) {
-          for (const entry of data) {
-            const candidates = [];
-
-            if (entry && typeof entry === 'object') {
-              candidates.push(entry);
-              if (Array.isArray(entry.Metadata)) {
-                for (const meta of entry.Metadata) candidates.push(meta);
-              }
-            }
-
-            for (const c of candidates) {
-              if (!c || typeof c !== 'object') continue;
-              const type = c.Type;
-              if (type !== 'WordBoundary') continue;
-
-              const dataObj = c.Data && typeof c.Data === 'object' ? c.Data : c;
-              const offset = Number(dataObj.Offset);
-              const dur = Number(dataObj.Duration);
-              if (!Number.isFinite(offset) || !Number.isFinite(dur)) continue;
-
-              const endSeconds = (offset + dur) / 10000000;
-              if (endSeconds > maxEndSeconds) maxEndSeconds = endSeconds;
-            }
-          }
-        }
-
-        if (maxEndSeconds > 0) duration = maxEndSeconds + 0.6;
-      }
-
-      if (!Number.isFinite(duration) || duration <= 0) duration = 4;
-      timings.push({ start: currentStart, end: currentStart + duration, duration });
-      currentStart += duration;
-    } catch {
-      const duration = 4;
-      timings.push({ start: currentStart, end: currentStart + duration, duration });
-      currentStart += duration;
+    } catch (e) {
+      log.debug(`Failed to get duration for index ${index}:`, e.message);
     }
+    
+    timings.push({ start: currentStart, end: currentStart + duration, duration });
+    currentStart += duration;
   }
   return timings;
 }
 
 function projectHasSpeech(projectId) {
+  const checkProject = (data) => {
+    const project = data?.projects?.[projectId];
+    const clips = Array.isArray(project?.clips) ? project.clips : [];
+    return clips.some(c => c?.speech?.trim());
+  };
+
   try {
-    // 1. Try checking specific project file first: public/script/<projectId>.json
-    const projectJsonPath = path.resolve(process.cwd(), 'public', 'script', `${projectId}.json`);
-    if (fs.existsSync(projectJsonPath)) {
-      const raw = fs.readFileSync(projectJsonPath, 'utf-8');
-      const data = JSON.parse(raw);
-      // The structure seems to be { projects: { [projectId]: { ... } } }
-      const project = data?.projects?.[projectId];
-      if (project) {
-        const clips = Array.isArray(project?.clips) ? project.clips : [];
-        return clips.some(c => typeof c?.speech === 'string' && c.speech.trim().length > 0);
-      }
+    const projectPath = path.resolve(process.cwd(), 'public', 'script', `${projectId}.json`);
+    if (fs.existsSync(projectPath)) {
+      return checkProject(JSON.parse(fs.readFileSync(projectPath, 'utf-8')));
     }
 
-    // 2. Fallback to checking index.json
-    const scriptJsonPath = path.resolve(process.cwd(), 'public', 'script', 'index.json');
-    if (!fs.existsSync(scriptJsonPath)) return true; // Assume true if no index to verify against
-    
-    const raw = fs.readFileSync(scriptJsonPath, 'utf-8');
-    const data = JSON.parse(raw);
-    const project = data?.projects?.[projectId];
-    if (project) {
-      const clips = Array.isArray(project?.clips) ? project.clips : [];
-      return clips.some(c => typeof c?.speech === 'string' && c.speech.trim().length > 0);
+    const indexPath = path.resolve(process.cwd(), 'public', 'script', 'index.json');
+    if (fs.existsSync(indexPath)) {
+      return checkProject(JSON.parse(fs.readFileSync(indexPath, 'utf-8')));
     }
-    
-    // If project not found in index.json but listed in entries, we might need to load those files?
-    // But for now, if we can't find the project config, we assume it might have speech to be safe,
-    // or return false if we are sure.
-    // However, the original code returned true on error, so let's stick to "safe" default or false if we know it's missing.
-    // If we found the file but no project data, maybe return false?
-    // Let's return true by default to avoid skipping audio generation if we are unsure.
-    return true; 
-  } catch {
-    return true;
+  } catch (e) {
+    log.debug('Error checking speech:', e.message);
   }
+  return true; // default to true if uncertain
 }
 
 async function findFreePort(startPort) {
@@ -227,10 +204,8 @@ function sleep(ms) {
 
 async function waitForViteReady(server, port, timeoutMs = 20000) {
   let serverStarted = false;
-  return await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      if (!serverStarted) reject(new Error('Server start timeout'));
-    }, timeoutMs);
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => !serverStarted && reject(new Error('Server start timeout')), timeoutMs);
 
     const cleanup = () => {
       clearTimeout(timeout);
@@ -242,45 +217,45 @@ async function waitForViteReady(server, port, timeoutMs = 20000) {
 
     server.stdout.on('data', (data) => {
       const text = data.toString();
-      process.stdout.write(text);
+      log.debug(text.trim());
       if (text.includes('Local:') || text.includes('ready in')) {
         serverStarted = true;
         cleanup();
-        resolve(null);
+        resolve();
       }
     });
 
     server.stderr.on('data', (data) => {
       const msg = data.toString();
-      process.stderr.write(msg);
+      log.debug(msg.trim());
       if (msg.includes('EADDRINUSE')) {
         cleanup();
         reject(new Error(`Port ${port} is already in use`));
       }
     });
 
-    server.on('error', (err) => {
-      cleanup();
-      reject(err);
-    });
-
-    server.on('exit', (code) => {
-      cleanup();
-      reject(new Error(`Server exited early with code ${code ?? 'unknown'}`));
-    });
+    server.on('error', (err) => { cleanup(); reject(err); });
+    server.on('exit', (code) => { cleanup(); reject(new Error(`Server exited with code ${code ?? 'unknown'}`)); });
   });
 }
 
 async function main() {
   const audioDir = path.resolve(process.cwd(), 'public', 'audio', projectId);
   const hasSpeech = projectHasSpeech(projectId);
+  
   if (hasSpeech) {
-    if (forceAudio || !fs.existsSync(audioDir) || fs.readdirSync(audioDir).filter(f => f.endsWith('.mp3')).length === 0) {
-      console.log(`TTS Audio not found for ${projectId}. Generating...`);
-      execSync(`npx tsx scripts/generate-audio.ts ${projectId}`, { stdio: 'inherit' });
+    const needsAudio = forceAudio || !fs.existsSync(audioDir) || 
+                       fs.readdirSync(audioDir).filter(f => f.endsWith('.mp3')).length === 0;
+    if (needsAudio) {
+      log.info(`Generating TTS audio for ${projectId}...`);
+      execSync(`npx tsx scripts/generate-audio.ts ${projectId}`, { 
+        stdio: currentLevel <= LEVELS.debug ? 'inherit' : 'ignore' 
+      });
+    } else {
+      log.debug('Audio files already exist');
     }
   } else {
-    console.log(`No speech found for ${projectId}. Skipping audio generation.`);
+    log.info(`No speech in ${projectId}, skipping audio generation`);
   }
 
   const renderTimings = loadRenderTimings(audioDir);
@@ -298,7 +273,7 @@ async function main() {
       const port = await findFreePort(attemptStart);
       baseUrl = `http://127.0.0.1:${port}/?record=true&project=${encodeURIComponent(projectId)}&script=${encodeURIComponent(scriptName)}`;
 
-      console.log(`Starting Vite server on port ${port}...`);
+      log.info(`Starting Vite server on port ${port}...`);
       server = spawn('pnpm', ['exec', 'vite', '--port', String(port), '--strictPort', '--host', '127.0.0.1'], {
         stdio: ['ignore', 'pipe', 'pipe'],
         shell: true
@@ -316,11 +291,12 @@ async function main() {
       }
     }
 
-    console.log('Launching browser for frame-by-frame rendering...');
+    log.info('Launching browser...');
     const executablePath = detectBrowserExecutable();
     if (!executablePath) {
-      throw new Error('System Chrome/Chromium not found. Set PUPPETEER_EXECUTABLE_PATH to your Chrome executable.');
+      throw new Error('Chrome/Chromium not found. Set PUPPETEER_EXECUTABLE_PATH.');
     }
+    log.debug(`Using browser: ${executablePath}`);
     
     const browserLaunchArgs = [
       `--window-size=${WIDTH},${HEIGHT}`,
@@ -359,7 +335,7 @@ async function main() {
       defaultViewport: null,
       protocolTimeout: 240000,
       timeout: 60000,
-      dumpio: true,
+      dumpio: currentLevel <= LEVELS.debug,
       env: {
         ...process.env,
         HOME: userDataDir,
@@ -518,142 +494,119 @@ async function main() {
     if (renderTimings.length === 0) {
       const duration = 10;
       const totalFrames = Math.round(duration * FPS);
-      console.log(`Rendering frames (no audio timings). Total frames: ${totalFrames}`);
+      log.info(`Rendering ${totalFrames} frames (no audio)`);
+      
       for (let i = 0; i < totalFrames; i++) {
-        const t = i / FPS;
         await page.evaluate((time) => {
           if (window.seekTo) window.seekTo(time);
           if (window.__renderTickAll) window.__renderTickAll(time);
-        }, t);
+        }, i / FPS);
         await page.evaluate(() => new Promise(requestAnimationFrame));
-
-        const filePath = path.join(FRAMES_DIR, `frame-${String(frameIndex).padStart(digits, '0')}.png`);
-        await page.screenshot({ path: filePath, type: 'png' });
+        await page.screenshot({ 
+          path: path.join(FRAMES_DIR, `frame-${String(frameIndex++).padStart(digits, '0')}.png`), 
+          type: 'png' 
+        });
+        
         if (i === 0 || (i + 1) % LOG_EVERY_N_FRAMES === 0 || i === totalFrames - 1) {
-          const pct = totalFrames > 0 ? (i + 1) / totalFrames : 1;
-          console.log(`[render] frame ${i + 1}/${totalFrames} (${formatPct(pct)})`);
+          log.info(`Progress: ${i + 1}/${totalFrames} (${formatPct((i + 1) / totalFrames)})`);
         }
-        frameIndex += 1;
       }
     } else {
       const totalFramesAll = renderTimings.reduce((acc, t) => acc + Math.max(1, Math.round(t.duration * FPS)), 0);
-      console.log(`Rendering frames with audio timings. Clips: ${renderTimings.length}, total frames: ${totalFramesAll}`);
+      log.info(`Rendering ${renderTimings.length} clips, ${totalFramesAll} total frames`);
+      
       for (let clipIndex = 0; clipIndex < renderTimings.length; clipIndex++) {
         const timing = renderTimings[clipIndex];
         const clipFrames = Math.max(1, Math.round(timing.duration * FPS));
 
-        console.log(`[render] clip ${clipIndex + 1}/${renderTimings.length} duration=${timing.duration.toFixed(2)}s frames=${clipFrames}`);
+        log.debug(`Clip ${clipIndex + 1}/${renderTimings.length}: ${timing.duration.toFixed(2)}s, ${clipFrames} frames`);
 
-        await page.evaluate((index) => {
-          if (window.setClipIndex) window.setClipIndex(index);
-        }, clipIndex);
+        await page.evaluate((index) => window.setClipIndex?.(index), clipIndex);
         await sleep(300);
 
         for (let i = 0; i < clipFrames; i++) {
-          const t = i / FPS;
           await page.evaluate((time) => {
             if (window.seekTo) window.seekTo(time);
             if (window.__renderTickAll) window.__renderTickAll(time);
-          }, t);
+          }, i / FPS);
           await page.evaluate(() => new Promise(requestAnimationFrame));
-
-          const filePath = path.join(FRAMES_DIR, `frame-${String(frameIndex).padStart(digits, '0')}.png`);
-          await page.screenshot({ path: filePath, type: 'png' });
+          await page.screenshot({ 
+            path: path.join(FRAMES_DIR, `frame-${String(frameIndex++).padStart(digits, '0')}.png`), 
+            type: 'png' 
+          });
+          
           if (i === 0 || (i + 1) % LOG_EVERY_N_FRAMES === 0 || i === clipFrames - 1) {
-            const overallPct = totalFramesAll > 0 ? (frameIndex + 1) / totalFramesAll : 1;
-            console.log(`[render] clip ${clipIndex + 1}/${renderTimings.length} frame ${i + 1}/${clipFrames} | overall ${frameIndex + 1}/${totalFramesAll} (${formatPct(overallPct)})`);
+            log.info(`Clip ${clipIndex + 1}/${renderTimings.length} | Overall ${frameIndex}/${totalFramesAll} (${formatPct(frameIndex / totalFramesAll)})`);
           }
-          frameIndex += 1;
         }
       }
     }
 
-    console.log('Frames rendered. Combining with ffmpeg...');
+    log.info('Combining frames with ffmpeg...');
 
     const audioFiles = hasSpeech && fs.existsSync(audioDir)
       ? fs.readdirSync(audioDir).filter(f => f.endsWith('.mp3')).sort((a, b) => {
         const ia = Number.parseInt(path.basename(a, '.mp3'), 10);
         const ib = Number.parseInt(path.basename(b, '.mp3'), 10);
-        if (Number.isNaN(ia) || Number.isNaN(ib)) return a.localeCompare(b);
-        return ia - ib;
+        return Number.isNaN(ia) || Number.isNaN(ib) ? a.localeCompare(b) : ia - ib;
       })
       : [];
 
     let combinedAudio = null;
-
     if (audioFiles.length > 0) {
+      log.debug(`Concatenating ${audioFiles.length} audio files`);
       const concatListPath = path.join(OUTPUT_DIR, `audio-${projectId}-concat.txt`);
       const tempAudioPath = path.join(OUTPUT_DIR, `audio-${projectId}.mp3`);
 
-      const listContent = audioFiles
+      fs.writeFileSync(concatListPath, audioFiles
         .map(f => `file '${path.join(audioDir, f).replace(/'/g, "'\\''")}'`)
-        .join('\n');
-      fs.writeFileSync(concatListPath, listContent);
+        .join('\n'));
 
-      const concatResult = spawnSync('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', concatListPath, '-c', 'copy', tempAudioPath], {
-        stdio: 'inherit'
+      const result = spawnSync('ffmpeg', ['-y', '-f', 'concat', '-safe', '0', '-i', concatListPath, '-c', 'copy', tempAudioPath], {
+        stdio: currentLevel <= LEVELS.debug ? 'inherit' : 'pipe'
       });
 
-      if (concatResult.status === 0) {
+      if (result.status === 0) {
         combinedAudio = tempAudioPath;
       } else {
-        console.warn('Audio concatenation failed, continuing without audio');
+        log.warn('Audio concatenation failed, continuing without audio');
       }
     }
 
-    const framePattern = path.join(FRAMES_DIR, 'frame-%06d.png');
-    const ffmpegArgs = ['-y', '-framerate', String(FPS), '-i', framePattern];
-
-    if (combinedAudio) {
-      ffmpegArgs.push('-i', combinedAudio);
-    }
+    const ffmpegArgs = ['-y', '-framerate', String(FPS), '-i', path.join(FRAMES_DIR, 'frame-%06d.png')];
+    if (combinedAudio) ffmpegArgs.push('-i', combinedAudio);
 
     if (useGpu && os.platform() === 'darwin') {
-      console.log('Using GPU acceleration (h264_videotoolbox)');
+      log.info('Using GPU acceleration (h264_videotoolbox)');
       ffmpegArgs.push('-c:v', 'h264_videotoolbox', '-b:v', '5000k');
     } else {
       ffmpegArgs.push('-c:v', 'libx264');
     }
 
     ffmpegArgs.push('-pix_fmt', 'yuv420p', '-r', String(FPS));
-
-    if (combinedAudio) {
-      ffmpegArgs.push('-c:a', 'aac', '-shortest');
-    }
-
+    if (combinedAudio) ffmpegArgs.push('-c:a', 'aac', '-shortest');
     ffmpegArgs.push(FINAL_VIDEO);
 
-    const ffmpegResult = spawnSync('ffmpeg', ffmpegArgs, { stdio: 'inherit' });
+    const ffmpegResult = spawnSync('ffmpeg', ffmpegArgs, { 
+      stdio: currentLevel <= LEVELS.debug ? 'inherit' : 'pipe' 
+    });
     if (ffmpegResult.status !== 0) {
-      console.error('ffmpeg failed with exit code', ffmpegResult.status);
+      log.error(`ffmpeg failed with exit code ${ffmpegResult.status}`);
       process.exitCode = ffmpegResult.status || 1;
     } else {
-      console.log(`Render complete: ${FINAL_VIDEO}`);
+      log.info(`✓ Render complete: ${FINAL_VIDEO}`);
       
-      // Clean up temporary files
-      console.log('Cleaning up temporary files...');
-      
-      // Remove frames directory
+      log.debug('Cleaning up temporary files...');
       if (fs.existsSync(FRAMES_DIR)) {
         fs.rmSync(FRAMES_DIR, { recursive: true, force: true });
-        console.log(`Removed frames directory: ${FRAMES_DIR}`);
       }
       
-      // Remove temporary audio files
       const concatListPath = path.join(OUTPUT_DIR, `audio-${projectId}-concat.txt`);
       const tempAudioPath = path.join(OUTPUT_DIR, `audio-${projectId}.mp3`);
-      
-      if (fs.existsSync(concatListPath)) {
-        fs.unlinkSync(concatListPath);
-        console.log(`Removed audio concat list: ${concatListPath}`);
-      }
-      
-      if (fs.existsSync(tempAudioPath)) {
-        fs.unlinkSync(tempAudioPath);
-        console.log(`Removed temporary audio: ${tempAudioPath}`);
-      }
-      
-      console.log('Cleanup complete.');
+      [concatListPath, tempAudioPath].forEach(p => {
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      });
+      log.debug('Cleanup complete');
     }
   } finally {
     await browser?.close?.().catch(() => {});
@@ -665,6 +618,6 @@ async function main() {
 }
 
 main().catch(err => {
-  console.error(err);
+  log.error(err);
   process.exit(1);
 });

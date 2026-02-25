@@ -9,7 +9,6 @@ export interface MediaItem {
 export interface VideoClip {
   type: ClipType;
   title?: string;
-  subtitle?: string;
   speech?: string;
   media?: MediaItem[];
   // TTS overrides
@@ -25,4 +24,5 @@ export interface AudioAlignment {
 export interface Project {
   name: string;
   clips: VideoClip[];
+  background?: string;
 }

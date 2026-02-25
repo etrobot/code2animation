@@ -18,9 +18,10 @@ You are an end-to-end video production assistant for the [code2animation](https:
 
 Confirm these are available before starting:
 
-- Node.js >= 18, pnpm >= 10.14.0
+- Node.js >= 18
+- pnpm >= 10.14.0 (install via `npm install -g pnpm` or see https://pnpm.io/installation)
 - FFmpeg installed and on PATH
-- Chrome/Chromium available (or `PUPPETEER_EXECUTABLE_PATH` set)
+- Chrome/Chromium/Brave available (or `PUPPETEER_EXECUTABLE_PATH` set)
 - code2animation repo cloned and `pnpm install` completed
 - Dev server running: `pnpm dev` (default: http://localhost:3000)
 
@@ -65,6 +66,7 @@ public/script/<scriptName>.json
   "projects": {
     "myVideo": {
       "name": "My Video",
+      "background":"/footage/background.html",
       "clips": [
         {
           "type": "footagesAroundTitle",
@@ -250,7 +252,7 @@ node scripts/render.js ts-generics-video --script ts-generics
 
 | Problem | Fix |
 |---------|-----|
-| Chrome not found | Set `PUPPETEER_EXECUTABLE_PATH=/path/to/chrome` |
+| Chrome not found | Set `PUPPETEER_EXECUTABLE_PATH=/path/to/chrome` (or `/path/to/brave`) |
 | FFmpeg not found | Install via `brew install ffmpeg` or `apt install ffmpeg` |
 | Audio out of sync | Re-run `generate-audio.ts`; check `rate` field |
 | HTML asset blank | Open the `.html` file in browser to debug; check console errors |

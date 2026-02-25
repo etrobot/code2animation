@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
-import { BackgroundLayer } from './components/BackgroundLayer';
-import { FootagesAroundTitleClip } from './components/FootagesAroundTitleClip';
-import { FootagesFullScreenClip } from './components/FootagesFullScreenClip';
+import { FootageClip } from './components/FootageClip';
 import { Play, Pause, RefreshCw, SkipForward, SkipBack } from 'lucide-react';
 import { useTTS } from './hooks/useTTS';
 import { Project, VideoClip } from './types';
@@ -18,7 +16,8 @@ declare global {
 export default function App() {
   const STAGE_WIDTH = 1920;
   const STAGE_HEIGHT = 1080;
-  const isRecordMode = new URLSearchParams(window.location.search).get('record') === 'true';
+  const isRecordMode = new URLSearchParams(window.location.search).get('record') === 'true' ||
+    (typeof window !== 'undefined' && window.self !== window.top);
 
   const [projects, setProjects] = useState<Record<string, Project>>({});
   const [isProjectsLoaded, setIsProjectsLoaded] = useState(false);
@@ -211,7 +210,8 @@ export default function App() {
 
         if (clipDuration > 0 && newTime >= clipDuration && hasClips) {
           if (currentClipIndex < project.clips.length - 1) {
-            return newTime; // Effect will handle switch
+            // Cap at duration while waiting for the effect to switch clips
+            return clipDuration;
           } else {
             setIsPlaying(false);
             return clipDuration;
@@ -359,113 +359,109 @@ export default function App() {
           }}
           className="relative"
         >
-        <div
-          style={{
-            width: STAGE_WIDTH,
-            height: STAGE_HEIGHT,
-            transform: `scale(${stageScale})`,
-            transformOrigin: 'top left'
-          }}
-          className="relative bg-black shadow-2xl overflow-hidden border border-zinc-800"
-        >
-          {/* We don't always need the background layer for every clip now, but keep it for some */}
-          {currentClip && <BackgroundLayer time={currentTime} />}
+          <div
+            style={{
+              width: STAGE_WIDTH,
+              height: STAGE_HEIGHT,
+              transform: `scale(${stageScale})`,
+              transformOrigin: 'top left'
+            }}
+            className="relative bg-black shadow-2xl overflow-hidden border border-zinc-800"
+          >
+            {/* Static Background Iframe */}
+            {hasClips && (
+              <iframe
+                key={activeProject}
+                src={project.background || "/footage/background.html"}
+                className="absolute inset-0 w-full h-full border-none z-0 pointer-events-none"
+                title="background"
+              />
+            )}
 
-          {currentClip && currentClip.type === 'footagesAroundTitle' && (
-            <FootagesAroundTitleClip
-              key={`${activeProject}-${currentClipIndex}`}
-              clip={currentClip}
-              currentTime={currentTime}
-              projectId={activeProject}
-              clipIndex={currentClipIndex}
-              duration={clipDuration}
-            />
-          )}
+            {currentClip && (
+              <FootageClip
+                key={`${activeProject}-${currentClipIndex}`}
+                clip={currentClip}
+                currentTime={currentTime}
+                projectId={activeProject}
+                clipIndex={currentClipIndex}
+                duration={clipDuration}
+              />
+            )}
 
-          {currentClip && currentClip.type === 'footagesFullScreen' && (
-            <FootagesFullScreenClip
-              key={`${activeProject}-${currentClipIndex}`}
-              clip={currentClip}
-              currentTime={currentTime}
-              projectId={activeProject}
-              clipIndex={currentClipIndex}
-              duration={clipDuration}
-            />
-          )}
-
-          {isGenerating && (
-            <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col items-center justify-center">
-              <RefreshCw className="w-12 h-12 text-[#00FF00] animate-spin mb-4" />
-              <h2 className="text-2xl font-black tracking-widest uppercase">Generating Audio Assets...</h2>
-              <p className="text-zinc-500 mt-2 font-mono">Edge-TTS is synthesizing your project scripts</p>
-            </div>
-          )}
-        </div>
+            {isGenerating && (
+              <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col items-center justify-center">
+                <RefreshCw className="w-12 h-12 text-[#00FF00] animate-spin mb-4" />
+                <h2 className="text-2xl font-black tracking-widest uppercase">Generating Audio Assets...</h2>
+                <p className="text-zinc-500 mt-2 font-mono">Edge-TTS is synthesizing your project scripts</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Controls */}
       {!isRecordMode && (
-      <div className="h-20 bg-zinc-900 border-t border-zinc-800 flex items-center px-8 justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="flex flex-col">
-            <span className="text-xs font-mono text-zinc-500 uppercase font-bold text-zinc-400">Project</span>
-            <select
-              value={activeProject}
-              onChange={(e) => {
-                setActiveProject(e.target.value);
-                setCurrentClipIndex(0);
-                setCurrentTime(0);
-                setIsPlaying(false);
-              }}
-              className="bg-zinc-800 text-sm font-bold text-white border border-white/10 rounded px-2 py-0.5 cursor-pointer hover:border-[#00FF00] transition-colors outline-none"
+        <div className="h-20 bg-zinc-900 border-t border-zinc-800 flex items-center px-8 justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="flex flex-col">
+              <span className="text-xs font-mono text-zinc-500 uppercase font-bold text-zinc-400">Project</span>
+              <select
+                value={activeProject}
+                onChange={(e) => {
+                  setActiveProject(e.target.value);
+                  setCurrentClipIndex(0);
+                  setCurrentTime(0);
+                  setIsPlaying(false);
+                }}
+                className="bg-zinc-800 text-sm font-bold text-white border border-white/10 rounded px-2 py-0.5 cursor-pointer hover:border-[#00FF00] transition-colors outline-none"
+              >
+                {Object.keys(projects).map(id => (
+                  <option key={id} value={id}>{id}</option>
+                ))}
+              </select>
+            </div>
+            <span className="text-zinc-600">|</span>
+            <div className="flex flex-col">
+              <span className="text-xs font-mono text-zinc-400 uppercase font-bold">Current Clip</span>
+              <span className="text-sm font-bold text-white">
+                {hasClips ? `${currentClipIndex + 1} / ${project.clips.length} : ${currentClip?.type}` : 'No clips'}
+              </span>
+            </div>
+            <span className="text-zinc-600">|</span>
+            <div className="flex flex-col">
+              <span className="text-xs font-mono text-zinc-400 uppercase font-bold">Time</span>
+              <span className="text-sm font-mono text-[#00FF00]">
+                {currentTime.toFixed(2)}s / {clipDuration.toFixed(2)}s
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button onClick={prevClip} className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
+              <SkipBack size={20} />
+            </button>
+
+            <button
+              onClick={togglePlay}
+              className="flex items-center space-x-2 bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-[#00FF00] hover:text-black transition-colors"
             >
-              {Object.keys(projects).map(id => (
-                <option key={id} value={id}>{id}</option>
-              ))}
-            </select>
-          </div>
-          <span className="text-zinc-600">|</span>
-          <div className="flex flex-col">
-            <span className="text-xs font-mono text-zinc-400 uppercase font-bold">Current Clip</span>
-            <span className="text-sm font-bold text-white">
-              {hasClips ? `${currentClipIndex + 1} / ${project.clips.length} : ${currentClip?.type}` : 'No clips'}
-            </span>
-          </div>
-          <span className="text-zinc-600">|</span>
-          <div className="flex flex-col">
-            <span className="text-xs font-mono text-zinc-400 uppercase font-bold">Time</span>
-            <span className="text-sm font-mono text-[#00FF00]">
-              {currentTime.toFixed(2)}s / {clipDuration.toFixed(2)}s
-            </span>
+              {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
+              <span>{isPlaying ? 'PAUSE' : 'PLAY'}</span>
+            </button>
+
+            <button onClick={nextClip} className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
+              <SkipForward size={20} />
+            </button>
+
+            <button
+              onClick={reset}
+              className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors ml-2"
+            >
+              <RefreshCw size={20} />
+            </button>
           </div>
         </div>
-
-        <div className="flex items-center space-x-2">
-          <button onClick={prevClip} className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
-            <SkipBack size={20} />
-          </button>
-
-          <button
-            onClick={togglePlay}
-            className="flex items-center space-x-2 bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-[#00FF00] hover:text-black transition-colors"
-          >
-            {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
-            <span>{isPlaying ? 'PAUSE' : 'PLAY'}</span>
-          </button>
-
-          <button onClick={nextClip} className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
-            <SkipForward size={20} />
-          </button>
-
-          <button
-            onClick={reset}
-            className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors ml-2"
-          >
-            <RefreshCw size={20} />
-          </button>
-        </div>
-      </div>
       )}
     </div>
   );

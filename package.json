@@ -9,9 +9,10 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "render": "node scripts/render.js",
-    "render:video-1": "node scripts/render.js video-1",
-    "render:video-2": "node scripts/render.js video-2"
+    "render": "LOG_LEVEL=info node scripts/render.js",
+    "render:video-1": "LOG_LEVEL=info node scripts/render.js video-1",
+    "render:video-2": "LOG_LEVEL=info node scripts/render.js video-2",
+    "render:debug": "LOG_LEVEL=debug node scripts/render.js"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
