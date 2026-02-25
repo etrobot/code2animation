@@ -326,7 +326,13 @@ async function main() {
       `--window-size=${WIDTH},${HEIGHT}`,
       '--hide-scrollbars',
       '--mute-audio',
-      '--disable-dev-shm-usage'
+      '--disable-dev-shm-usage',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-gpu',
+      '--disable-gpu-compositing',
+      '--enable-logging=stderr',
+      '--v=1'
     ];
 
     if (useGpu) {
@@ -341,18 +347,164 @@ async function main() {
       '--disable-breakpad',
       '--no-crashpad'
     );
+    browserLaunchArgs.push('--disable-rlz');
+    browserLaunchArgs.push('--disable-features=Crashpad');
+    browserLaunchArgs.push(`--crash-dumps-dir=${userDataDir}`);
 
     browser = await puppeteer.launch({
       headless: 'new',
       executablePath,
       args: browserLaunchArgs,
       userDataDir,
-      defaultViewport: null
+      defaultViewport: null,
+      protocolTimeout: 240000,
+      timeout: 60000,
+      dumpio: true,
+      env: {
+        ...process.env,
+        HOME: userDataDir,
+      },
     });
 
     const page = await browser.newPage();
     await page.evaluateOnNewDocument(() => {
       window.suppressTTS = true;
+      window.__renderTickAll = (timeSeconds) => {
+        try {
+          if (typeof window.__renderTick === 'function') {
+            window.__renderTick(timeSeconds);
+          }
+        } catch {
+        }
+
+        try {
+          const iframes = document.querySelectorAll('iframe');
+          for (const iframe of iframes) {
+            try {
+              const w = iframe && iframe.contentWindow;
+              if (w && typeof w.__renderTick === 'function') {
+                w.__renderTick(timeSeconds);
+              }
+            } catch {
+            }
+          }
+        } catch {
+        }
+      };
+
+      try {
+        if (!(typeof location?.pathname === 'string' && location.pathname.startsWith('/footage/'))) return;
+
+        let nowMs = 0;
+        let rafId = 0;
+        const rafCallbacks = new Map();
+
+        let timerId = 0;
+        const timeoutIdToEntry = new Map();
+        const intervalIdToEntry = new Map();
+
+        const realDateNow = Date.now.bind(Date);
+        const timeOrigin = realDateNow();
+
+        const runRafOnce = (timeMs) => {
+          const entries = Array.from(rafCallbacks.entries());
+          rafCallbacks.clear();
+          for (const [, cb] of entries) {
+            try {
+              cb(timeMs);
+            } catch {
+            }
+          }
+        };
+
+        const runTimersOnce = (timeMs) => {
+          for (const [id, entry] of Array.from(timeoutIdToEntry.entries())) {
+            if (timeMs < entry.atMs) continue;
+            timeoutIdToEntry.delete(id);
+            try {
+              entry.cb(...entry.args);
+            } catch {
+            }
+          }
+
+          for (const entry of Array.from(intervalIdToEntry.values())) {
+            const intervalMs = Math.max(1, entry.intervalMs);
+            while (timeMs >= entry.nextAtMs) {
+              entry.nextAtMs += intervalMs;
+              try {
+                entry.cb(...entry.args);
+              } catch {
+              }
+            }
+          }
+        };
+
+        const syncCssAnimations = (timeMs) => {
+          try {
+            const animations = document.getAnimations();
+            for (const anim of animations) {
+              try {
+                anim.pause();
+                anim.currentTime = timeMs;
+              } catch {
+              }
+            }
+          } catch {
+          }
+        };
+
+        window.__renderTick = (timeSeconds) => {
+          const nextNowMs = Math.max(0, Number(timeSeconds) * 1000);
+          const deltaMs = nextNowMs - nowMs;
+          const stepMs = 1000 / 60;
+          const steps = Math.max(1, Math.round(deltaMs / stepMs));
+
+          syncCssAnimations(nextNowMs);
+
+          for (let s = 1; s <= steps; s++) {
+            const tMs = nowMs + (deltaMs * s) / steps;
+            runTimersOnce(tMs);
+            runRafOnce(tMs);
+          }
+
+          nowMs = nextNowMs;
+        };
+
+        window.requestAnimationFrame = (cb) => {
+          rafId += 1;
+          rafCallbacks.set(rafId, cb);
+          return rafId;
+        };
+        window.cancelAnimationFrame = (id) => {
+          rafCallbacks.delete(id);
+        };
+
+        window.setTimeout = (cb, delayMs, ...args) => {
+          timerId += 1;
+          const atMs = nowMs + Math.max(0, Number(delayMs) || 0);
+          timeoutIdToEntry.set(timerId, { cb, atMs, args });
+          return timerId;
+        };
+        window.clearTimeout = (id) => {
+          timeoutIdToEntry.delete(id);
+        };
+
+        window.setInterval = (cb, intervalMs, ...args) => {
+          timerId += 1;
+          const ms = Math.max(1, Number(intervalMs) || 0);
+          intervalIdToEntry.set(timerId, { cb, intervalMs: ms, nextAtMs: nowMs + ms, args });
+          return timerId;
+        };
+        window.clearInterval = (id) => {
+          intervalIdToEntry.delete(id);
+        };
+
+        Date.now = () => timeOrigin + nowMs;
+        if (typeof performance?.now === 'function') {
+          performance.now = () => nowMs;
+        }
+      } catch {
+      }
     });
     await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
     await page.goto(baseUrl, { waitUntil: 'networkidle0' });
@@ -371,8 +523,10 @@ async function main() {
         const t = i / FPS;
         await page.evaluate((time) => {
           if (window.seekTo) window.seekTo(time);
+          if (window.__renderTickAll) window.__renderTickAll(time);
         }, t);
-        await sleep(FRAME_MS);
+        await page.evaluate(() => new Promise(requestAnimationFrame));
+
         const filePath = path.join(FRAMES_DIR, `frame-${String(frameIndex).padStart(digits, '0')}.png`);
         await page.screenshot({ path: filePath, type: 'png' });
         if (i === 0 || (i + 1) % LOG_EVERY_N_FRAMES === 0 || i === totalFrames - 1) {
@@ -399,8 +553,10 @@ async function main() {
           const t = i / FPS;
           await page.evaluate((time) => {
             if (window.seekTo) window.seekTo(time);
+            if (window.__renderTickAll) window.__renderTickAll(time);
           }, t);
-          await sleep(FRAME_MS);
+          await page.evaluate(() => new Promise(requestAnimationFrame));
+
           const filePath = path.join(FRAMES_DIR, `frame-${String(frameIndex).padStart(digits, '0')}.png`);
           await page.screenshot({ path: filePath, type: 'png' });
           if (i === 0 || (i + 1) % LOG_EVERY_N_FRAMES === 0 || i === clipFrames - 1) {
