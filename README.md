@@ -5,6 +5,10 @@ A code-based video generation project that provides video materials for FFmpeg c
 ## Project Overview
 
 Code2Animation is an alternertive to Replit Animaiton and Remotion.
+
+https://github.com/user-attachments/assets/2659aa26-b093-48d6-8e53-c6bb8b899750
+
+
 ## Key Features
 
 - 🎬 **Multiple Clip Types**: Support for code display, fullscreen video, typography animation, split-screen display, and chatbot interface
