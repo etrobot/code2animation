@@ -5,42 +5,26 @@
         "Type": "WordBoundary",
         "Data": {
           "Offset": 1000000,
-          "Duration": 2375000,
+          "Duration": 11000000,
           "text": {
-            "Text": "不要",
+            "Text": "Code2Animation",
+            "Length": 14,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 12250000,
+          "Duration": 1250000,
+          "text": {
+            "Text": "is",
             "Length": 2,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 3500000,
-          "Duration": 1625000,
-          "text": {
-            "Text": "再",
-            "Length": 1,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 5125000,
-          "Duration": 7500000,
-          "text": {
-            "Text": "浪费时间",
-            "Length": 4,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -55,8 +39,8 @@
           "Offset": 13625000,
           "Duration": 4375000,
           "text": {
-            "Text": "手动",
-            "Length": 2,
+            "Text": "finally",
+            "Length": 7,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -68,11 +52,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 18125000,
-          "Duration": 3500000,
+          "Offset": 18250000,
+          "Duration": 3750000,
           "text": {
-            "Text": "设置",
-            "Length": 2,
+            "Text": "here",
+            "Length": 4,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -84,11 +68,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 21875000,
-          "Duration": 3625000,
+          "Offset": 30750000,
+          "Duration": 6875000,
           "text": {
-            "Text": "关键",
-            "Length": 2,
+            "Text": "Transforming",
+            "Length": 12,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -100,11 +84,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 25500000,
-          "Duration": 2625000,
+          "Offset": 37875000,
+          "Duration": 1250000,
           "text": {
-            "Text": "帧",
-            "Length": 1,
+            "Text": "your",
+            "Length": 4,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -116,11 +100,107 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 28125000,
+          "Offset": 39250000,
+          "Duration": 3875000,
+          "text": {
+            "Text": "scripts",
+            "Length": 7,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 43375000,
+          "Duration": 2125000,
+          "text": {
+            "Text": "into",
+            "Length": 4,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 45750000,
+          "Duration": 6125000,
+          "text": {
+            "Text": "cinematic",
+            "Length": 9,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 52125000,
+          "Duration": 4875000,
+          "text": {
+            "Text": "visuals",
+            "Length": 7,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 57250000,
           "Duration": 1750000,
           "text": {
-            "Text": "了",
-            "Length": 1,
+            "Text": "with",
+            "Length": 4,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 59250000,
+          "Duration": 2625000,
+          "text": {
+            "Text": "pure",
+            "Length": 4,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 62000000,
+          "Duration": 5625000,
+          "text": {
+            "Text": "control",
+            "Length": 7,
             "BoundaryType": "WordBoundary"
           }
         }

@@ -8,7 +8,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "render": "node scripts/render.js",
+    "render:video-1": "node scripts/render.js video-1",
+    "render:video-2": "node scripts/render.js video-2"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

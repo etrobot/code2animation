@@ -5,10 +5,10 @@
         "Type": "WordBoundary",
         "Data": {
           "Offset": 1000000,
-          "Duration": 2125000,
+          "Duration": 1500000,
           "text": {
-            "Text": "以",
-            "Length": 1,
+            "Text": "The",
+            "Length": 3,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -20,11 +20,43 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 3375000,
-          "Duration": 8375000,
+          "Offset": 2625000,
+          "Duration": 4000000,
           "text": {
-            "Text": "前所未有",
-            "Length": 4,
+            "Text": "future",
+            "Length": 6,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 6875000,
+          "Duration": 875000,
+          "text": {
+            "Text": "of",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 8000000,
+          "Duration": 3500000,
+          "text": {
+            "Text": "video",
+            "Length": 5,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -37,10 +69,10 @@
         "Type": "WordBoundary",
         "Data": {
           "Offset": 11750000,
-          "Duration": 750000,
+          "Duration": 6500000,
           "text": {
-            "Text": "的",
-            "Length": 1,
+            "Text": "generation",
+            "Length": 10,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -52,10 +84,10 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 12625000,
-          "Duration": 4125000,
+          "Offset": 18375000,
+          "Duration": 1250000,
           "text": {
-            "Text": "速度",
+            "Text": "is",
             "Length": 2,
             "BoundaryType": "WordBoundary"
           }
@@ -68,75 +100,59 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 18000000,
-          "Duration": 4500000,
-          "text": {
-            "Text": "交付",
-            "Length": 2,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 22625000,
-          "Duration": 1625000,
-          "text": {
-            "Text": "你",
-            "Length": 1,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 24250000,
-          "Duration": 1000000,
-          "text": {
-            "Text": "的",
-            "Length": 1,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 25500000,
-          "Duration": 3750000,
-          "text": {
-            "Text": "营销",
-            "Length": 2,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 29375000,
+          "Offset": 19875000,
           "Duration": 3875000,
           "text": {
-            "Text": "资产",
-            "Length": 2,
+            "Text": "here",
+            "Length": 4,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 32500000,
+          "Duration": 7250000,
+          "text": {
+            "Text": "Experience",
+            "Length": 10,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 40000000,
+          "Duration": 10625000,
+          "text": {
+            "Text": "Code2Animation",
+            "Length": 14,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 50750000,
+          "Duration": 3625000,
+          "text": {
+            "Text": "now",
+            "Length": 3,
             "BoundaryType": "WordBoundary"
           }
         }

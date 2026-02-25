@@ -54,35 +54,42 @@ Confirm these are available before starting:
 ### File location
 
 ```
-public/script/<scriptName>.js
+public/script/<scriptName>.json
 ```
 
 ### Script format
 
-```js
-// public/script/myVideo.js
-export default [
-   {
-    type: 'footagesAroundTitle',
-    title: 'CODE\n2\nANIMATION',
-    speech: "Code2Animation is finally here. Transforming your scripts into cinematic visuals with pure control.",
-    media: [
-      { src: '/footage/chatbot.html', word: 'Code' },
-      { src: '/footage/chatbot.html', word: 'Animation' },
-      { src: '/footage/chatbot.html', word: 'cinematic' }
-    ]
-  },
-  {
-    type: 'footagesFullScreen',
-    title: 'PURE\nCONTROL',
-    speech: "Absolute control over every pixel, every transition, and every word.",
-    media: [
-      { src: '/footage/chatbot.html', word: 'pure' },
-      { src: '/footage/chatbot.html', word: 'control' },
-      { src: '/footage/chatbot.html', word: 'pixel' }
-    ]
+```json
+// public/script/myVideo.json
+{
+  "projects": {
+    "myVideo": {
+      "name": "My Video",
+      "clips": [
+        {
+          "type": "footagesAroundTitle",
+          "title": "CODE\n2\nANIMATION",
+          "speech": "Code2Animation is finally here. Transforming your scripts into cinematic visuals with pure control.",
+          "media": [
+            { "src": "/footage/chatbot.html", "word": "Code" },
+            { "src": "/footage/chatbot.html", "word": "Animation" },
+            { "src": "/footage/chatbot.html", "word": "cinematic" }
+          ]
+        },
+        {
+          "type": "footagesFullScreen",
+          "title": "PURE\nCONTROL",
+          "speech": "Absolute control over every pixel, every transition, and every word.",
+          "media": [
+            { "src": "/footage/chatbot.html", "word": "pure" },
+            { "src": "/footage/chatbot.html", "word": "control" },
+            { "src": "/footage/chatbot.html", "word": "pixel" }
+          ]
+        }
+      ]
+    }
   }
-]
+}
 ```
 
 ### Clip types
@@ -96,10 +103,8 @@ export default [
 
 ```typescript
 interface MediaItem {
-  type: 'video' | 'image' | 'code';
   src?: string;       // path relative to public/ e.g. "footage/demo.mp4"
-  lang?: string;      // for code: syntax highlight language
-  content?: string;   // for code: the code string itself
+  word?: string;      // trigger word for timing synchronization
 }
 ```
 
@@ -111,6 +116,8 @@ interface MediaItem {
 - Vary themes across clips for visual interest (`dark` → `neon` → `light`).
 - For code clips, prefer short, illustrative snippets (< 20 lines).
 - Aim for 5–12 clips per video (60–180 seconds total).
+- Use `media.word` fields to synchronize visual elements with spoken words.
+- For Chinese content, ensure `media.word` matches Chinese words in the speech text.
 
 ---
 
@@ -195,16 +202,24 @@ node scripts/render.js <projectId> --script <scriptName>
 
 Optional flags:
 ```bash
---port 5175   # specify dev server port if 3000 is taken
+--port 5175       # specify dev server port if 3000 is taken
+--force-audio     # force regeneration of TTS audio even if files exist
 ```
 
 Output: `public/video/render-<projectId>.mp4`
 
 The renderer:
 1. Launches Puppeteer pointing at `http://localhost:<port>?script=<scriptName>`
-2. Captures frames for each clip
+2. Captures frames for each clip with progress logging
 3. Composites audio + video with FFmpeg
 4. Writes the final MP4
+
+### Rendering improvements
+
+- **Accurate timing**: Clip durations calculated from all WordBoundary events to prevent premature video ending
+- **Progress logging**: Shows per-clip progress and frame rendering status
+- **Silent project support**: Skips audio generation for projects without speech
+- **Forced audio regeneration**: Use `--force-audio` to regenerate TTS when speech content changes
 
 ---
 
@@ -213,7 +228,7 @@ The renderer:
 User brief: *"Make a 1-minute video introducing TypeScript generics"*
 
 ```bash
-# 1. Write script → public/script/ts-generics.js  (see format above)
+# 1. Write script → public/script/ts-generics.json  (see format above)
 
 # 2. Generate TTS
 pnpm tsx scripts/generate-audio.ts ts-generics
@@ -240,7 +255,36 @@ node scripts/render.js ts-generics-video --script ts-generics
 | Audio out of sync | Re-run `generate-audio.ts`; check `rate` field |
 | HTML asset blank | Open the `.html` file in browser to debug; check console errors |
 | Port conflict | Use `--port` flag with a free port |
-| Script not loading | Ensure file is at `public/script/<name>.js` with `export default [...]` |
+| Script not loading | Ensure file is at `public/script/<name>.json` with proper JSON structure |
+| Video ends prematurely | Use `--force-audio` to regenerate timing data |
+| Wrong language spoken | Check voice field in clips; ensure `media.word` matches speech language |
+| Media timing off | Verify `media.word` values match actual words in speech text |
+
+---
+
+## Recent Updates
+
+### JS to JSON Migration
+- Video scripts now use JSON format instead of JavaScript modules
+- Scripts located at `public/script/<name>.json` with `{projects: {...}}` structure
+- Frontend loads scripts via `fetch()` instead of dynamic imports
+- Audio generation script reads JSON from filesystem
+
+### Chinese Speech Support
+- Added `zh-CN-XiaoxiaoNeural` voice for Mandarin narration
+- Enhanced word boundary matching for Chinese text processing
+- Improved timing synchronization with Chinese TTS tokens
+
+### Rendering Enhancements
+- **Progress logging**: Real-time feedback during frame rendering
+- **Accurate timing**: Clip durations calculated from all WordBoundary events
+- **Silent projects**: Automatic detection and skipping of audio generation
+- **Force audio regeneration**: `--force-audio` flag for updating changed speech
+
+### Word Trigger Optimization
+- Enhanced `media.word` matching with normalization and fuzzy matching
+- Support for Chinese characters and multi-word triggers
+- Robust handling of TTS token variations
 
 ---
 

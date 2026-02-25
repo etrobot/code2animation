@@ -4,7 +4,7 @@ A code-based video generation project that provides video materials for FFmpeg c
 
 ## Project Overview
 
-Code2Animation is an innovative video generation tool that can convert code into dynamic video content.
+Code2Animation is an alternertive to Replit Animaiton and Remotion.
 ## Key Features
 
 - 🎬 **Multiple Clip Types**: Support for code display, fullscreen video, typography animation, split-screen display, and chatbot interface
@@ -54,6 +54,16 @@ pnpm build
 
 ```bash
 pnpm preview
+```
+
+### Video Rendering
+
+```bash
+# Render a specific project (e.g., video-1)
+pnpm render:video-1
+
+# Render any project with custom parameters
+pnpm render <projectId> --script <script> --port <port>
 ```
 
 ## Project Structure
@@ -137,11 +147,12 @@ Video rendering engine that handles:
 Usage:
 
 ```bash
-# Render a project to mp4 (loads public/script/<script>.js)
-node scripts/render.js <projectId> --script <script>
+# Direct script usage
+node scripts/render.js <projectId> --script <script> --port <port>
 
-# Optionally choose the dev server port start (will auto-pick a free port)
-node scripts/render.js <projectId> --script <script> --port 5175
+# PNPM commands (recommended)
+pnpm render <projectId> --script <script> --port <port>
+pnpm render:video-1  # Pre-configured command for video-1 project
 ```
 
 Output:

@@ -1,7 +1,21 @@
 import fs from 'fs';
 import path from 'path';
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
-import { projects } from '../public/script/index.js';
+
+const SCRIPT_JSON_PATH = path.resolve(process.cwd(), 'public', 'script', 'index.json');
+
+function loadProjectsFromScriptJson() {
+    if (!fs.existsSync(SCRIPT_JSON_PATH)) {
+        throw new Error(`Script JSON not found: ${SCRIPT_JSON_PATH}`);
+    }
+    const raw = fs.readFileSync(SCRIPT_JSON_PATH, 'utf-8');
+    const data = JSON.parse(raw);
+    const projects = data?.projects;
+    if (!projects || typeof projects !== 'object') {
+        throw new Error(`Invalid script JSON (missing projects): ${SCRIPT_JSON_PATH}`);
+    }
+    return projects as Record<string, any>;
+}
 
 const OUTPUT_DIR = path.resolve(process.cwd(), 'public/audio');
 
@@ -12,6 +26,7 @@ async function ensureDir(dir: string) {
 }
 
 async function generateAudioForProject(projectId: string) {
+    const projects = loadProjectsFromScriptJson();
     const project = projects[projectId as keyof typeof projects];
     if (!project) {
         console.error(`Project ${projectId} not found`);
@@ -90,6 +105,8 @@ async function generateAudioForProject(projectId: string) {
 async function main() {
     const args = process.argv.slice(2);
     const targetProject = args[0];
+
+    const projects = loadProjectsFromScriptJson();
 
     if (targetProject) {
         await generateAudioForProject(targetProject);

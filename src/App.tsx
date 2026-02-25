@@ -65,80 +65,116 @@ export default function App() {
     const resolveScriptUrl = () => {
       const params = new URLSearchParams(window.location.search);
       const raw = params.get('script');
-      if (!raw) return '/script/index.js';
+      if (!raw) return '/script/index.json';
 
       const trimmed = raw.trim();
-      if (!trimmed) return '/script/index.js';
-      if (trimmed.includes('/') || trimmed.includes('\\')) return '/script/index.js';
-      if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) return '/script/index.js';
+      if (!trimmed) return '/script/index.json';
+      if (trimmed.includes('/') || trimmed.includes('\\')) return '/script/index.json';
+      if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) return '/script/index.json';
 
-      const filename = trimmed.endsWith('.js') ? trimmed : `${trimmed}.js`;
+      let filename = trimmed;
+      if (!filename.endsWith('.json')) filename = `${filename}.json`;
       return `/script/${filename}`;
     };
 
-    const applyProjectsFromGlobal = () => {
-      const loaded = globalAny.projectsFromScript;
-      if (!loaded || typeof loaded !== 'object') return false;
-      setProjects(loaded as Record<string, Project>);
-      const keys = Object.keys(loaded as Record<string, Project>);
+    const applyProjectsToState = (loaded: Record<string, Project>) => {
+      setProjects(loaded);
+      const keys = Object.keys(loaded);
       if (keys.length > 0) {
         const urlProject = new URLSearchParams(window.location.search).get('project');
-        if (urlProject && (loaded as Record<string, Project>)[urlProject]) {
+        if (urlProject && loaded[urlProject]) {
           setActiveProject(urlProject);
         } else {
-          setActiveProject(prev => ((loaded as Record<string, Project>)[prev] ? prev : keys[0]));
+          setActiveProject(prev => (loaded[prev] ? prev : keys[0]));
         }
       }
-      return true;
     };
 
-    const importFromBlob = async (src: string) => {
-      const resp = await fetch(`${src}${src.includes('?') ? '&' : '?'}t=${Date.now()}`, { cache: 'no-store' });
-      if (!resp.ok) throw new Error(`Failed to fetch ${src}`);
-      const code = await resp.text();
-      const blobUrl = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
-      try {
-        const dynamicImport = new Function('u', 'return import(u)') as (u: string) => Promise<unknown>;
-        await dynamicImport(blobUrl);
-      } finally {
-        URL.revokeObjectURL(blobUrl);
+    const fetchJson = async (src: string) => {
+      const url = `${src}${src.includes('?') ? '&' : '?'}t=${Date.now()}`;
+      const res = await fetch(url, { method: 'GET' });
+      if (!res.ok) throw new Error(`Failed to fetch projects: ${src}`);
+      return (await res.json()) as any;
+    };
+
+    const mergeProjects = (acc: Record<string, Project>, next: any) => {
+      if (!next || typeof next !== 'object') return acc;
+      const exported = (next as any).projects;
+      if (!exported || typeof exported !== 'object') return acc;
+      for (const [id, project] of Object.entries(exported as Record<string, Project>)) {
+        acc[id] = project;
       }
+      return acc;
+    };
+
+    const loadProjectsFromScriptUrl = async (src: string) => {
+      const data = await fetchJson(src);
+
+      if (data && typeof data === 'object') {
+        if (Array.isArray((data as any).entries)) {
+          const entries = (data as any).entries as unknown[];
+          const merged: Record<string, Project> = {};
+          for (const entry of entries) {
+            if (typeof entry !== 'string') continue;
+            const trimmed = entry.trim();
+            if (!trimmed) continue;
+            if (trimmed.includes('/') || trimmed.includes('\\')) continue;
+            if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) continue;
+            const entryUrl = `/script/${trimmed}`;
+            const entryData = await fetchJson(entryUrl);
+            mergeProjects(merged, entryData);
+          }
+          return merged;
+        }
+
+        const merged: Record<string, Project> = {};
+        mergeProjects(merged, data);
+        return merged;
+      }
+
+      return {} as Record<string, Project>;
     };
 
     const primaryUrl = resolveScriptUrl();
     (async () => {
+      let loadedProjects: Record<string, Project> | null = null;
       try {
-        await importFromBlob(primaryUrl);
+        loadedProjects = await loadProjectsFromScriptUrl(primaryUrl);
       } catch {
-        if (primaryUrl !== '/script/index.js') {
+        if (primaryUrl !== '/script/index.json') {
           try {
-            await importFromBlob('/script/index.js');
+            loadedProjects = await loadProjectsFromScriptUrl('/script/index.json');
           } catch {
           }
         }
       }
 
       if (!isMounted) return;
-      if (applyProjectsFromGlobal()) {
+      if (!loadedProjects || Object.keys(loadedProjects).length === 0) loadedProjects = null;
+
+      if (loadedProjects) {
+        applyProjectsToState(loadedProjects);
         setIsProjectsLoaded(true);
         return;
       }
 
-      if (primaryUrl === '/script/index.js') {
-        console.error('[projects] /script/index.js loaded but did not provide projectsFromScript');
+      if (primaryUrl === '/script/index.json') {
+        console.error('[projects] /script/index.json loaded but did not provide projects');
         setProjects({});
         setIsProjectsLoaded(true);
         return;
       }
 
       try {
-        await importFromBlob('/script/index.js');
+        loadedProjects = await loadProjectsFromScriptUrl('/script/index.json');
       } catch {
       }
 
       if (!isMounted) return;
-      if (!applyProjectsFromGlobal()) {
-        console.error('[projects] Fallback /script/index.js loaded but did not provide projectsFromScript');
+      if (loadedProjects && Object.keys(loadedProjects).length > 0) {
+        applyProjectsToState(loadedProjects);
+      } else {
+        console.error('[projects] Fallback /script/index.json loaded but did not provide projects');
         setProjects({});
       }
       setIsProjectsLoaded(true);
@@ -244,6 +280,12 @@ export default function App() {
   useEffect(() => {
     const checkAudio = async () => {
       try {
+        const projectClips = projects[activeProject]?.clips || [];
+        const hasAnySpeech = projectClips.some(c => typeof c?.speech === 'string' && c.speech.trim().length > 0);
+        if (!hasAnySpeech) {
+          setIsGenerating(false);
+          return;
+        }
         const testUrl = `/audio/${activeProject}/0.mp3?t=${Date.now()}`;
         console.log(`[checkAudio] Checking ${testUrl}`);
         const resp = await fetch(testUrl, { method: 'HEAD' });
@@ -278,7 +320,7 @@ export default function App() {
       }
     };
     if (activeProject) checkAudio();
-  }, [activeProject]);
+  }, [activeProject, projects]);
 
   const togglePlay = () => setIsPlaying(!isPlaying);
   const reset = () => {

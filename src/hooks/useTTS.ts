@@ -33,11 +33,12 @@ export function useTTS({ clip, projectId, clipIndex, onWordBoundary, onEnd }: Us
     setIsSpeaking(false);
   }, []);
 
-  const loadResource = useCallback(async (pId: string, cIdx: number, speech: string, options?: { voice?: string }) => {
+  const loadResource = useCallback(async (pId: string, cIdx: number, speech?: string, options?: { voice?: string }) => {
     let isMounted = true;
     let objectUrl: string | null = null;
 
     try {
+      if (!speech || !speech.trim()) return null;
       const audioPath = `/audio/${pId}/${cIdx}.mp3`;
       const jsonPath = `/audio/${pId}/${cIdx}.json`;
 
@@ -140,9 +141,16 @@ export function useTTS({ clip, projectId, clipIndex, onWordBoundary, onEnd }: Us
   // Sync mode (for App.tsx)
   useEffect(() => {
     if (clip && projectId && clipIndex !== undefined) {
-      loadResource(projectId, clipIndex, clip.speech, {
-        voice: clip.voice
-      });
+      if (!clip.speech || !clip.speech.trim()) {
+        stop();
+        setAlignment(null);
+        setDuration(0);
+        setAudio(null);
+      } else {
+        loadResource(projectId, clipIndex, clip.speech, {
+          voice: clip.voice
+        });
+      }
     }
     return () => {
       stop();

@@ -5,10 +5,10 @@
         "Type": "WordBoundary",
         "Data": {
           "Offset": 1000000,
-          "Duration": 3125000,
+          "Duration": 5750000,
           "text": {
-            "Text": "只需",
-            "Length": 2,
+            "Text": "Absolute",
+            "Length": 8,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -20,11 +20,27 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 4375000,
+          "Offset": 7000000,
+          "Duration": 4750000,
+          "text": {
+            "Text": "control",
+            "Length": 7,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 12000000,
           "Duration": 2750000,
           "text": {
-            "Text": "提出",
-            "Length": 2,
+            "Text": "over",
+            "Length": 4,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -36,11 +52,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 7250000,
-          "Duration": 4250000,
+          "Offset": 14875000,
+          "Duration": 2250000,
           "text": {
-            "Text": "要求",
-            "Length": 2,
+            "Text": "every",
+            "Length": 5,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -52,11 +68,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 14000000,
-          "Duration": 1000000,
+          "Offset": 17375000,
+          "Duration": 4375000,
           "text": {
-            "Text": "我",
-            "Length": 1,
+            "Text": "pixel",
+            "Length": 5,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -68,11 +84,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 15125000,
-          "Duration": 1500000,
+          "Offset": 23625000,
+          "Duration": 2250000,
           "text": {
-            "Text": "就",
-            "Length": 1,
+            "Text": "every",
+            "Length": 5,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -84,11 +100,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 16625000,
-          "Duration": 1375000,
+          "Offset": 26125000,
+          "Duration": 6375000,
           "text": {
-            "Text": "会",
-            "Length": 1,
+            "Text": "transition",
+            "Length": 10,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -100,11 +116,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 18125000,
-          "Duration": 1750000,
+          "Offset": 34250000,
+          "Duration": 1250000,
           "text": {
-            "Text": "为",
-            "Length": 1,
+            "Text": "and",
+            "Length": 3,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -116,11 +132,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 19875000,
-          "Duration": 875000,
+          "Offset": 35750000,
+          "Duration": 2375000,
           "text": {
-            "Text": "你",
-            "Length": 1,
+            "Text": "every",
+            "Length": 5,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -132,27 +148,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 21000000,
-          "Duration": 4000000,
+          "Offset": 38375000,
+          "Duration": 3750000,
           "text": {
-            "Text": "生成",
-            "Length": 2,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 25125000,
-          "Duration": 4125000,
-          "text": {
-            "Text": "代码",
-            "Length": 2,
+            "Text": "word",
+            "Length": 4,
             "BoundaryType": "WordBoundary"
           }
         }

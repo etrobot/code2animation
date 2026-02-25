@@ -6,6 +6,7 @@ import os from 'os';
 
 const args = process.argv.slice(2);
 const projectId = args.find(arg => !arg.startsWith('--'));
+const forceAudio = args.includes('--force-audio');
 
 function getArgValue(name) {
   const withEq = args.find(arg => arg.startsWith(`--${name}=`));
@@ -84,13 +85,38 @@ function loadRenderTimings(audioDir) {
     try {
       const raw = fs.readFileSync(path.join(audioDir, item.file), 'utf-8');
       const data = JSON.parse(raw);
-      const lastWord = Array.isArray(data) && data.length > 0 ? data[data.length - 1] : null;
       let duration = 4;
-      if (lastWord && lastWord.Metadata) {
-        const meta = lastWord.Metadata.find(m => m.Type === 'WordBoundary');
-        if (meta) {
-          duration = (meta.Data.Offset + meta.Data.Duration) / 10000000 + 0.5;
+
+      let maxEndSeconds = 0;
+      if (Array.isArray(data)) {
+        for (const entry of data) {
+          const candidates = [];
+
+          if (entry && typeof entry === 'object') {
+            candidates.push(entry);
+            if (Array.isArray(entry.Metadata)) {
+              for (const meta of entry.Metadata) candidates.push(meta);
+            }
+          }
+
+          for (const c of candidates) {
+            if (!c || typeof c !== 'object') continue;
+            const type = c.Type;
+            if (type !== 'WordBoundary') continue;
+
+            const dataObj = c.Data && typeof c.Data === 'object' ? c.Data : c;
+            const offset = Number(dataObj.Offset);
+            const dur = Number(dataObj.Duration);
+            if (!Number.isFinite(offset) || !Number.isFinite(dur)) continue;
+
+            const endSeconds = (offset + dur) / 10000000;
+            if (endSeconds > maxEndSeconds) maxEndSeconds = endSeconds;
+          }
         }
+      }
+
+      if (maxEndSeconds > 0) {
+        duration = maxEndSeconds + 0.6;
       }
       timings.push({ start: currentStart, end: currentStart + duration, duration });
       currentStart += duration;
@@ -101,6 +127,20 @@ function loadRenderTimings(audioDir) {
     }
   }
   return timings;
+}
+
+function projectHasSpeech(projectId) {
+  try {
+    const scriptJsonPath = path.resolve(process.cwd(), 'public', 'script', 'index.json');
+    if (!fs.existsSync(scriptJsonPath)) return true;
+    const raw = fs.readFileSync(scriptJsonPath, 'utf-8');
+    const data = JSON.parse(raw);
+    const project = data?.projects?.[projectId];
+    const clips = Array.isArray(project?.clips) ? project.clips : [];
+    return clips.some(c => typeof c?.speech === 'string' && c.speech.trim().length > 0);
+  } catch {
+    return true;
+  }
 }
 
 async function findFreePort(startPort) {
@@ -182,9 +222,14 @@ async function waitForViteReady(server, port, timeoutMs = 20000) {
 
 async function main() {
   const audioDir = path.resolve(process.cwd(), 'public', 'audio', projectId);
-  if (!fs.existsSync(audioDir) || fs.readdirSync(audioDir).filter(f => f.endsWith('.mp3')).length === 0) {
-    console.log(`TTS Audio not found for ${projectId}. Generating...`);
-    execSync(`npx tsx scripts/generate-audio.ts ${projectId}`, { stdio: 'inherit' });
+  const hasSpeech = projectHasSpeech(projectId);
+  if (hasSpeech) {
+    if (forceAudio || !fs.existsSync(audioDir) || fs.readdirSync(audioDir).filter(f => f.endsWith('.mp3')).length === 0) {
+      console.log(`TTS Audio not found for ${projectId}. Generating...`);
+      execSync(`npx tsx scripts/generate-audio.ts ${projectId}`, { stdio: 'inherit' });
+    }
+  } else {
+    console.log(`No speech found for ${projectId}. Skipping audio generation.`);
   }
 
   const renderTimings = loadRenderTimings(audioDir);
@@ -247,10 +292,13 @@ async function main() {
 
     let frameIndex = 0;
     const digits = 6;
+    const LOG_EVERY_N_FRAMES = 30;
+    const formatPct = (value) => `${Math.round(value * 100)}%`;
 
     if (renderTimings.length === 0) {
       const duration = 10;
       const totalFrames = Math.round(duration * FPS);
+      console.log(`Rendering frames (no audio timings). Total frames: ${totalFrames}`);
       for (let i = 0; i < totalFrames; i++) {
         const t = i / FPS;
         await page.evaluate((time) => {
@@ -259,12 +307,20 @@ async function main() {
         await sleep(FRAME_MS);
         const filePath = path.join(FRAMES_DIR, `frame-${String(frameIndex).padStart(digits, '0')}.png`);
         await page.screenshot({ path: filePath, type: 'png' });
+        if (i === 0 || (i + 1) % LOG_EVERY_N_FRAMES === 0 || i === totalFrames - 1) {
+          const pct = totalFrames > 0 ? (i + 1) / totalFrames : 1;
+          console.log(`[render] frame ${i + 1}/${totalFrames} (${formatPct(pct)})`);
+        }
         frameIndex += 1;
       }
     } else {
+      const totalFramesAll = renderTimings.reduce((acc, t) => acc + Math.max(1, Math.round(t.duration * FPS)), 0);
+      console.log(`Rendering frames with audio timings. Clips: ${renderTimings.length}, total frames: ${totalFramesAll}`);
       for (let clipIndex = 0; clipIndex < renderTimings.length; clipIndex++) {
         const timing = renderTimings[clipIndex];
         const clipFrames = Math.max(1, Math.round(timing.duration * FPS));
+
+        console.log(`[render] clip ${clipIndex + 1}/${renderTimings.length} duration=${timing.duration.toFixed(2)}s frames=${clipFrames}`);
 
         await page.evaluate((index) => {
           if (window.setClipIndex) window.setClipIndex(index);
@@ -279,6 +335,10 @@ async function main() {
           await sleep(FRAME_MS);
           const filePath = path.join(FRAMES_DIR, `frame-${String(frameIndex).padStart(digits, '0')}.png`);
           await page.screenshot({ path: filePath, type: 'png' });
+          if (i === 0 || (i + 1) % LOG_EVERY_N_FRAMES === 0 || i === clipFrames - 1) {
+            const overallPct = totalFramesAll > 0 ? (frameIndex + 1) / totalFramesAll : 1;
+            console.log(`[render] clip ${clipIndex + 1}/${renderTimings.length} frame ${i + 1}/${clipFrames} | overall ${frameIndex + 1}/${totalFramesAll} (${formatPct(overallPct)})`);
+          }
           frameIndex += 1;
         }
       }
@@ -286,7 +346,7 @@ async function main() {
 
     console.log('Frames rendered. Combining with ffmpeg...');
 
-    const audioFiles = fs.existsSync(audioDir)
+    const audioFiles = hasSpeech && fs.existsSync(audioDir)
       ? fs.readdirSync(audioDir).filter(f => f.endsWith('.mp3')).sort((a, b) => {
         const ia = Number.parseInt(path.basename(a, '.mp3'), 10);
         const ib = Number.parseInt(path.basename(b, '.mp3'), 10);
