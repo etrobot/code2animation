@@ -10,11 +10,42 @@ function loadProjectsFromScriptJson() {
     }
     const raw = fs.readFileSync(SCRIPT_JSON_PATH, 'utf-8');
     const data = JSON.parse(raw);
-    const projects = data?.projects;
-    if (!projects || typeof projects !== 'object') {
-        throw new Error(`Invalid script JSON (missing projects): ${SCRIPT_JSON_PATH}`);
+    
+    const projects: Record<string, any> = {};
+
+    // 1. Load inline projects
+    if (data.projects && typeof data.projects === 'object') {
+        Object.assign(projects, data.projects);
     }
-    return projects as Record<string, any>;
+
+    // 2. Load referenced entries
+    if (Array.isArray(data.entries)) {
+        const scriptDir = path.dirname(SCRIPT_JSON_PATH);
+        for (const entry of data.entries) {
+            const entryPath = path.join(scriptDir, entry);
+            if (fs.existsSync(entryPath)) {
+                try {
+                    const entryRaw = fs.readFileSync(entryPath, 'utf-8');
+                    const entryData = JSON.parse(entryRaw);
+                    if (entryData.projects) {
+                        Object.assign(projects, entryData.projects);
+                    }
+                } catch (e) {
+                    console.warn(`Failed to load project entry ${entry}:`, e);
+                }
+            }
+        }
+    }
+
+    if (Object.keys(projects).length === 0) {
+        // As a fallback, try to find a file named after the projectId if we could pass it here,
+        // but since we don't have projectId argument, we can only rely on index.json entries.
+        // Or we could scan the directory for .json files that contain "projects" key.
+        // For now, assume index.json is correct.
+        console.warn(`No projects found in ${SCRIPT_JSON_PATH} or its entries.`);
+    }
+
+    return projects;
 }
 
 const OUTPUT_DIR = path.resolve(process.cwd(), 'public/audio');

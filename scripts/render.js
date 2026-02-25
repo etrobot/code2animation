@@ -7,6 +7,7 @@ import os from 'os';
 const args = process.argv.slice(2);
 const projectId = args.find(arg => !arg.startsWith('--'));
 const forceAudio = args.includes('--force-audio');
+const useGpu = args.includes('--gpu');
 
 function getArgValue(name) {
   const withEq = args.find(arg => arg.startsWith(`--${name}=`));
@@ -131,13 +132,38 @@ function loadRenderTimings(audioDir) {
 
 function projectHasSpeech(projectId) {
   try {
+    // 1. Try checking specific project file first: public/script/<projectId>.json
+    const projectJsonPath = path.resolve(process.cwd(), 'public', 'script', `${projectId}.json`);
+    if (fs.existsSync(projectJsonPath)) {
+      const raw = fs.readFileSync(projectJsonPath, 'utf-8');
+      const data = JSON.parse(raw);
+      // The structure seems to be { projects: { [projectId]: { ... } } }
+      const project = data?.projects?.[projectId];
+      if (project) {
+        const clips = Array.isArray(project?.clips) ? project.clips : [];
+        return clips.some(c => typeof c?.speech === 'string' && c.speech.trim().length > 0);
+      }
+    }
+
+    // 2. Fallback to checking index.json
     const scriptJsonPath = path.resolve(process.cwd(), 'public', 'script', 'index.json');
-    if (!fs.existsSync(scriptJsonPath)) return true;
+    if (!fs.existsSync(scriptJsonPath)) return true; // Assume true if no index to verify against
+    
     const raw = fs.readFileSync(scriptJsonPath, 'utf-8');
     const data = JSON.parse(raw);
     const project = data?.projects?.[projectId];
-    const clips = Array.isArray(project?.clips) ? project.clips : [];
-    return clips.some(c => typeof c?.speech === 'string' && c.speech.trim().length > 0);
+    if (project) {
+      const clips = Array.isArray(project?.clips) ? project.clips : [];
+      return clips.some(c => typeof c?.speech === 'string' && c.speech.trim().length > 0);
+    }
+    
+    // If project not found in index.json but listed in entries, we might need to load those files?
+    // But for now, if we can't find the project config, we assume it might have speech to be safe,
+    // or return false if we are sure.
+    // However, the original code returned true on error, so let's stick to "safe" default or false if we know it's missing.
+    // If we found the file but no project data, maybe return false?
+    // Let's return true by default to avoid skipping audio generation if we are unsure.
+    return true; 
   } catch {
     return true;
   }
@@ -269,15 +295,22 @@ async function main() {
     if (!executablePath) {
       throw new Error('System Chrome/Chromium not found. Set PUPPETEER_EXECUTABLE_PATH to your Chrome executable.');
     }
+    
+    const browserLaunchArgs = [
+      `--window-size=${WIDTH},${HEIGHT}`,
+      '--hide-scrollbars',
+      '--mute-audio',
+      '--disable-dev-shm-usage'
+    ];
+
+    if (useGpu) {
+      browserLaunchArgs.push('--use-gl=desktop');
+    }
+
     browser = await puppeteer.launch({
       headless: 'new',
       executablePath,
-      args: [
-        `--window-size=${WIDTH},${HEIGHT}`,
-        '--hide-scrollbars',
-        '--mute-audio',
-        '--disable-dev-shm-usage'
-      ],
+      args: browserLaunchArgs,
       defaultViewport: null
     });
 
@@ -381,9 +414,20 @@ async function main() {
     const ffmpegArgs = ['-y', '-framerate', String(FPS), '-i', framePattern];
 
     if (combinedAudio) {
-      ffmpegArgs.push('-i', combinedAudio, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest');
+      ffmpegArgs.push('-i', combinedAudio);
+    }
+
+    if (useGpu && os.platform() === 'darwin') {
+      console.log('Using GPU acceleration (h264_videotoolbox)');
+      ffmpegArgs.push('-c:v', 'h264_videotoolbox', '-b:v', '5000k');
     } else {
-      ffmpegArgs.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p');
+      ffmpegArgs.push('-c:v', 'libx264');
+    }
+
+    ffmpegArgs.push('-pix_fmt', 'yuv420p', '-r', String(FPS));
+
+    if (combinedAudio) {
+      ffmpegArgs.push('-c:a', 'aac', '-shortest');
     }
 
     ffmpegArgs.push(FINAL_VIDEO);
