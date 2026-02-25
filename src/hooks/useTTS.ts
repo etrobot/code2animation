@@ -33,7 +33,7 @@ export function useTTS({ clip, projectId, clipIndex, onWordBoundary, onEnd }: Us
     setIsSpeaking(false);
   }, []);
 
-  const loadResource = useCallback(async (pId: string, cIdx: number, speech: string, options?: { voice?: string, rate?: string, pitch?: string }) => {
+  const loadResource = useCallback(async (pId: string, cIdx: number, speech: string, options?: { voice?: string }) => {
     let isMounted = true;
     let objectUrl: string | null = null;
 
@@ -109,9 +109,7 @@ export function useTTS({ clip, projectId, clipIndex, onWordBoundary, onEnd }: Us
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: speech,
-          voice: options?.voice,
-          rate: options?.rate,
-          pitch: options?.pitch
+          voice: options?.voice
         }),
       });
       if (response.ok) {
@@ -143,9 +141,7 @@ export function useTTS({ clip, projectId, clipIndex, onWordBoundary, onEnd }: Us
   useEffect(() => {
     if (clip && projectId && clipIndex !== undefined) {
       loadResource(projectId, clipIndex, clip.speech, {
-        voice: clip.voice,
-        rate: clip.rate,
-        pitch: clip.pitch
+        voice: clip.voice
       });
     }
     return () => {

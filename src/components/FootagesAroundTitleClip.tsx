@@ -29,6 +29,24 @@ const RotatingBackground: React.FC<{ className?: string; backgroundSrc?: string;
   );
 };
 
+const buildTypedLines = (text: string, visibleChars: number) => {
+  const lines: string[] = [''];
+  let remaining = Math.max(0, visibleChars);
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '\n') {
+      lines.push('');
+      continue;
+    }
+    if (remaining <= 0) break;
+    lines[lines.length - 1] += ch;
+    remaining -= 1;
+  }
+
+  return lines;
+};
+
 export const FootagesAroundTitleClip: React.FC<Props> = ({ clip, currentTime, projectId, clipIndex, duration }) => {
   const [wordTimings, setWordTimings] = useState<Record<string, number>>({});
   const [isLoaded, setIsLoaded] = useState(false);
@@ -110,6 +128,16 @@ export const FootagesAroundTitleClip: React.FC<Props> = ({ clip, currentTime, pr
   }
 
   const isVisibleStyle = animState !== 'hidden';
+  const titleText = clip.title || '';
+  const titleCharCount = titleText.replace(/\n/g, '').length;
+  const typingStart = 0.15;
+  const cps = titleCharCount > 0 ? Math.min(40, Math.max(14, titleCharCount / 1.35)) : 20;
+  const visibleChars = titleCharCount > 0
+    ? Math.max(0, Math.min(titleCharCount, Math.floor((currentTime - typingStart) * cps)))
+    : 0;
+  const typedLines = buildTypedLines(titleText, visibleChars);
+  const isTyping = titleCharCount > 0 && visibleChars < titleCharCount && currentTime >= typingStart;
+  const caretVisible = isTyping && (Math.floor((currentTime - typingStart) * 2) % 2 === 0);
 
   return (
     <div
@@ -137,32 +165,25 @@ export const FootagesAroundTitleClip: React.FC<Props> = ({ clip, currentTime, pr
               animationDelay: isRendering ? `-${currentTime}s` : '0s'
             }}
           >
-            {(clip.title || '').split('\n').map((line, lineIdx) => {
-              const previousLines = (clip.title || '').split('\n').slice(0, lineIdx);
-              const prevWordsCount = previousLines.join(' ').split(/\s+/).filter(Boolean).length;
-
-              const hasSpaces = /\s/.test(line);
-              const segments = hasSpaces ? line.split(/\s+/) : [...line];
-
+            {typedLines.map((line, lineIdx) => {
+              const isLastLine = lineIdx === typedLines.length - 1;
               return (
                 <div key={lineIdx} className="intro-title-line">
-                  {segments.map((seg, segIdx) => {
-                    const wordDelay = (prevWordsCount + segIdx) * 0.08;
-
-                    return (
-                      <span
-                        key={segIdx}
-                        className={`intro-title-word ${hasSpaces ? 'is-word' : 'is-char'}`}
-                        style={{
-                          animationDelay: isRendering ? `${wordDelay - currentTime}s` : `${wordDelay}s`,
-                          animationPlayState: isRendering ? 'paused' : 'running',
-                          marginRight: hasSpaces ? '0.25em' : '0'
-                        }}
-                      >
-                        {seg}
-                      </span>
-                    );
-                  })}
+                  <span>{line.length > 0 ? line : '\u00A0'}</span>
+                  {isLastLine && caretVisible && (
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        display: 'inline-block',
+                        width: '0.08em',
+                        height: '0.85em',
+                        marginLeft: '0.08em',
+                        transform: 'translateY(0.05em)',
+                        background: 'currentColor',
+                        opacity: 0.9
+                      }}
+                    />
+                  )}
                 </div>
               );
             })}
@@ -208,7 +229,6 @@ export const FootagesAroundTitleClip: React.FC<Props> = ({ clip, currentTime, pr
                       src={item.src}
                       className="intro-media-floating-content border-none bg-transparent"
                       title={item.word}
-                      allowTransparency={true}
                     />
                   ) : (
                     <img

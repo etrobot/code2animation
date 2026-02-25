@@ -1,6 +1,5 @@
 import React from 'react';
 import { VideoClip } from '../types';
-import { useTTS } from '../hooks/useTTS';
 import { motion } from 'motion/react';
 
 interface Props {
@@ -11,18 +10,9 @@ interface Props {
 }
 
 export const TypographyClip: React.FC<Props> = ({ clip, currentTime, projectId, clipIndex }) => {
-  const { duration } = useTTS({
-    clip,
-    projectId,
-    clipIndex
-  });
-
-  const isNeon = clip.theme === 'neon';
-  const isLight = clip.theme === 'light';
-
-  const bgColor = isLight ? 'bg-white' : 'bg-black';
-  const textColor = isLight ? 'text-black' : (isNeon ? 'text-[#00FF00]' : 'text-white');
-  const accentColor = isNeon ? '#00FF00' : (isLight ? '#000' : '#FFF');
+  const bgColor = 'bg-black';
+  const textColor = 'text-white';
+  const accentColor = '#FFF';
 
   return (
     <div className={`relative w-full h-full flex flex-col items-center justify-center ${bgColor} overflow-hidden`}>

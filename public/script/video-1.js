@@ -1,10 +1,8 @@
-import { VideoClip } from '../types';
-
-export const clips: VideoClip[] = [
+export const clips = [
   {
     type: 'footagesAroundTitle',
     title: 'CODE\n2\nANIMATION',
-    speech: "Code 2 Animation is finally here. Transforming your scripts into cinematic visuals with pure control.",
+    speech: "Code2Animation is finally here. Transforming your scripts into cinematic visuals with pure control.",
     media: [
       { src: '/footage/chatbot.html', word: 'Code' },
       { src: '/footage/chatbot.html', word: 'Animation' },
@@ -12,9 +10,14 @@ export const clips: VideoClip[] = [
     ]
   },
   {
-    type: 'typography',
+    type: 'footagesFullScreen',
     title: 'PURE\nCONTROL',
     speech: "Absolute control over every pixel, every transition, and every word.",
+    media: [
+      { src: '/footage/chatbot.html', word: 'pure' },
+      { src: '/footage/chatbot.html', word: 'control' },
+      { src: '/footage/chatbot.html', word: 'pixel' }
+    ]
   },
   {
     type: 'footagesAroundTitle',
@@ -28,7 +31,7 @@ export const clips: VideoClip[] = [
   {
     type: 'footagesFullScreen',
     title: 'READY?',
-    speech: "The future of video generation is here. Experience Code 2 Animation now.",
+    speech: "The future of video generation is here. Experience Code2Animation now.",
     media: [
       { src: '/footage/chatbot.html', word: 'future' },
       { src: '/footage/chatbot.html', word: 'experience' },
@@ -41,3 +44,11 @@ export const project = {
   name: 'video-1',
   clips
 };
+
+export const projects = {
+  [project.name]: project
+};
+
+if (typeof window !== 'undefined') {
+  window.projectsFromScript = projects;
+}

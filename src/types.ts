@@ -1,4 +1,4 @@
-export type ClipType = 'footagesAroundTitle' | 'footagesFullScreen' | 'typography' | 'splitScreen' | 'chatbot';
+export type ClipType = 'footagesAroundTitle' | 'footagesFullScreen';
 
 export interface MediaItem {
   src: string;
@@ -12,13 +12,8 @@ export interface VideoClip {
   subtitle?: string;
   speech: string;
   media?: MediaItem[];
-  duration?: number; // Optional override
-  // Visual style overrides
-  theme?: 'dark' | 'light' | 'neon';
   // TTS overrides
   voice?: string;
-  rate?: string;
-  pitch?: string;
 }
 
 export interface AudioAlignment {

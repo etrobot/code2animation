@@ -1,21 +1,27 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
-import { projects } from './projects';
 import { BackgroundLayer } from './components/BackgroundLayer';
 import { FootagesAroundTitleClip } from './components/FootagesAroundTitleClip';
 import { FootagesFullScreenClip } from './components/FootagesFullScreenClip';
-import { TypographyClip } from './components/TypographyClip';
 import { Play, Pause, RefreshCw, SkipForward, SkipBack } from 'lucide-react';
 import { useTTS } from './hooks/useTTS';
+import { Project, VideoClip } from './types';
 
 // Add type definition for window.seekTo
 declare global {
   interface Window {
     seekTo: (time: number) => void;
     setClipIndex: (index: number) => void;
+    projectsFromScript?: Record<string, Project>;
   }
 }
 
 export default function App() {
+  const STAGE_WIDTH = 1920;
+  const STAGE_HEIGHT = 1080;
+  const isRecordMode = new URLSearchParams(window.location.search).get('record') === 'true';
+
+  const [projects, setProjects] = useState<Record<string, Project>>({});
+  const [isProjectsLoaded, setIsProjectsLoaded] = useState(false);
   const [activeProject, setActiveProject] = useState('video-1');
   const [currentClipIndex, setCurrentClipIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -23,30 +29,19 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const [stageDimensions, setStageDimensions] = useState({ width: 0, height: 0 });
+  const [stageScale, setStageScale] = useState(1);
 
   useLayoutEffect(() => {
     const updateDimensions = () => {
       if (!containerRef.current) return;
+      if (isRecordMode) {
+        setStageScale(1);
+        return;
+      }
       const { clientWidth, clientHeight } = containerRef.current;
 
-      const availableWidth = clientWidth;
-      const availableHeight = clientHeight;
-
-      const containerRatio = availableWidth / availableHeight;
-      const targetRatio = 16 / 9;
-
-      let width, height;
-
-      if (containerRatio > targetRatio) {
-        height = availableHeight;
-        width = height * targetRatio;
-      } else {
-        width = availableWidth;
-        height = width / targetRatio;
-      }
-
-      setStageDimensions({ width, height });
+      const scale = Math.min(clientWidth / STAGE_WIDTH, clientHeight / STAGE_HEIGHT);
+      setStageScale(Number.isFinite(scale) && scale > 0 ? scale : 1);
     };
 
     updateDimensions();
@@ -57,17 +52,116 @@ export default function App() {
     return () => observer.disconnect();
   }, []);
 
-  const project = projects[activeProject as keyof typeof projects];
-  const currentClip = project.clips[currentClipIndex];
+  useEffect(() => {
+    if (isProjectsLoaded) return;
+    const globalAny = window as any;
+    if (globalAny.projectsFromScript) {
+      setProjects(globalAny.projectsFromScript as Record<string, Project>);
+      setIsProjectsLoaded(true);
+      return;
+    }
+    let isMounted = true;
+
+    const resolveScriptUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const raw = params.get('script');
+      if (!raw) return '/script/index.js';
+
+      const trimmed = raw.trim();
+      if (!trimmed) return '/script/index.js';
+      if (trimmed.includes('/') || trimmed.includes('\\')) return '/script/index.js';
+      if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) return '/script/index.js';
+
+      const filename = trimmed.endsWith('.js') ? trimmed : `${trimmed}.js`;
+      return `/script/${filename}`;
+    };
+
+    const applyProjectsFromGlobal = () => {
+      const loaded = globalAny.projectsFromScript;
+      if (!loaded || typeof loaded !== 'object') return false;
+      setProjects(loaded as Record<string, Project>);
+      const keys = Object.keys(loaded as Record<string, Project>);
+      if (keys.length > 0) {
+        const urlProject = new URLSearchParams(window.location.search).get('project');
+        if (urlProject && (loaded as Record<string, Project>)[urlProject]) {
+          setActiveProject(urlProject);
+        } else {
+          setActiveProject(prev => ((loaded as Record<string, Project>)[prev] ? prev : keys[0]));
+        }
+      }
+      return true;
+    };
+
+    const importFromBlob = async (src: string) => {
+      const resp = await fetch(`${src}${src.includes('?') ? '&' : '?'}t=${Date.now()}`, { cache: 'no-store' });
+      if (!resp.ok) throw new Error(`Failed to fetch ${src}`);
+      const code = await resp.text();
+      const blobUrl = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }));
+      try {
+        const dynamicImport = new Function('u', 'return import(u)') as (u: string) => Promise<unknown>;
+        await dynamicImport(blobUrl);
+      } finally {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+
+    const primaryUrl = resolveScriptUrl();
+    (async () => {
+      try {
+        await importFromBlob(primaryUrl);
+      } catch {
+        if (primaryUrl !== '/script/index.js') {
+          try {
+            await importFromBlob('/script/index.js');
+          } catch {
+          }
+        }
+      }
+
+      if (!isMounted) return;
+      if (applyProjectsFromGlobal()) {
+        setIsProjectsLoaded(true);
+        return;
+      }
+
+      if (primaryUrl === '/script/index.js') {
+        console.error('[projects] /script/index.js loaded but did not provide projectsFromScript');
+        setProjects({});
+        setIsProjectsLoaded(true);
+        return;
+      }
+
+      try {
+        await importFromBlob('/script/index.js');
+      } catch {
+      }
+
+      if (!isMounted) return;
+      if (!applyProjectsFromGlobal()) {
+        console.error('[projects] Fallback /script/index.js loaded but did not provide projectsFromScript');
+        setProjects({});
+      }
+      setIsProjectsLoaded(true);
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isProjectsLoaded]);
+
+  const project: Project = projects[activeProject] || { name: activeProject, clips: [] as VideoClip[] };
+  const hasClips = project.clips.length > 0;
+  const currentClip: VideoClip | null =
+    hasClips && currentClipIndex < project.clips.length ? project.clips[currentClipIndex] : null;
 
   // Get duration from TTS hook or override
   const { duration: ttsDuration, audio } = useTTS({
-    clip: currentClip,
+    clip: currentClip || undefined,
     projectId: activeProject,
     clipIndex: currentClipIndex
   });
 
-  const clipDuration = currentClip.duration || ttsDuration || 3;
+  const clipDuration = (ttsDuration || 3);
 
   const requestRef = useRef<number>(0);
   const previousTimeRef = useRef<number>(0);
@@ -79,7 +173,7 @@ export default function App() {
       setCurrentTime(prevTime => {
         const newTime = prevTime + deltaTime;
 
-        if (clipDuration > 0 && newTime >= clipDuration) {
+        if (clipDuration > 0 && newTime >= clipDuration && hasClips) {
           if (currentClipIndex < project.clips.length - 1) {
             return newTime; // Effect will handle switch
           } else {
@@ -94,7 +188,7 @@ export default function App() {
     if (isPlaying) {
       requestRef.current = requestAnimationFrame(animate);
     }
-  }, [isPlaying, clipDuration, currentClipIndex, project.clips.length]);
+  }, [isPlaying, clipDuration, currentClipIndex, project.clips.length, hasClips]);
 
   useEffect(() => {
     if (audio) {
@@ -123,7 +217,7 @@ export default function App() {
 
   // Handle clip switching
   useEffect(() => {
-    if (clipDuration > 0 && currentTime >= clipDuration) {
+    if (clipDuration > 0 && currentTime >= clipDuration && hasClips) {
       if (currentClipIndex < project.clips.length - 1) {
         setCurrentClipIndex(prev => prev + 1);
         setCurrentTime(0);
@@ -131,7 +225,7 @@ export default function App() {
         setIsPlaying(false);
       }
     }
-  }, [currentTime, clipDuration, currentClipIndex, project.clips.length]);
+  }, [currentTime, clipDuration, currentClipIndex, project.clips.length, hasClips]);
 
   // Expose seekTo for headless rendering
   useEffect(() => {
@@ -208,20 +302,34 @@ export default function App() {
   return (
     <div className="w-full h-screen bg-black text-white flex flex-col font-sans">
       {/* Viewport / Stage */}
-      <div ref={containerRef} className="flex-1 relative overflow-hidden flex items-center justify-center p-8 bg-zinc-950">
+      <div
+        ref={containerRef}
+        className={
+          isRecordMode
+            ? 'flex-1 relative overflow-hidden flex items-start justify-start p-0 bg-black'
+            : 'flex-1 relative overflow-hidden flex items-center justify-center p-8 bg-zinc-950'
+        }
+      >
         <div
           style={{
-            width: stageDimensions.width,
-            height: stageDimensions.height,
-            minWidth: stageDimensions.width ? undefined : '160px',
-            minHeight: stageDimensions.height ? undefined : '90px'
+            width: STAGE_WIDTH * stageScale,
+            height: STAGE_HEIGHT * stageScale
+          }}
+          className="relative"
+        >
+        <div
+          style={{
+            width: STAGE_WIDTH,
+            height: STAGE_HEIGHT,
+            transform: `scale(${stageScale})`,
+            transformOrigin: 'top left'
           }}
           className="relative bg-black shadow-2xl overflow-hidden border border-zinc-800"
         >
           {/* We don't always need the background layer for every clip now, but keep it for some */}
-          {currentClip.type !== 'typography' && <BackgroundLayer />}
+          {currentClip && <BackgroundLayer />}
 
-          {currentClip.type === 'footagesAroundTitle' && (
+          {currentClip && currentClip.type === 'footagesAroundTitle' && (
             <FootagesAroundTitleClip
               key={`${activeProject}-${currentClipIndex}`}
               clip={currentClip}
@@ -232,7 +340,7 @@ export default function App() {
             />
           )}
 
-          {currentClip.type === 'footagesFullScreen' && (
+          {currentClip && currentClip.type === 'footagesFullScreen' && (
             <FootagesFullScreenClip
               key={`${activeProject}-${currentClipIndex}`}
               clip={currentClip}
@@ -240,16 +348,6 @@ export default function App() {
               projectId={activeProject}
               clipIndex={currentClipIndex}
               duration={clipDuration}
-            />
-          )}
-
-          {currentClip.type === 'typography' && (
-            <TypographyClip
-              key={`${activeProject}-${currentClipIndex}`}
-              clip={currentClip}
-              currentTime={currentTime}
-              projectId={activeProject}
-              clipIndex={currentClipIndex}
             />
           )}
 
@@ -261,13 +359,13 @@ export default function App() {
             </div>
           )}
         </div>
+        </div>
       </div>
 
       {/* Controls */}
+      {!isRecordMode && (
       <div className="h-20 bg-zinc-900 border-t border-zinc-800 flex items-center px-8 justify-between">
         <div className="flex items-center space-x-4">
-          <h1 className="text-xl font-black font-sans tracking-tight text-white">CODE 2 ANIMATION</h1>
-          <span className="text-zinc-600">|</span>
           <div className="flex flex-col">
             <span className="text-xs font-mono text-zinc-500 uppercase font-bold text-zinc-400">Project</span>
             <select
@@ -289,7 +387,7 @@ export default function App() {
           <div className="flex flex-col">
             <span className="text-xs font-mono text-zinc-400 uppercase font-bold">Current Clip</span>
             <span className="text-sm font-bold text-white">
-              {currentClipIndex + 1} / {project.clips.length} : {currentClip.type}
+              {hasClips ? `${currentClipIndex + 1} / ${project.clips.length} : ${currentClip?.type}` : 'No clips'}
             </span>
           </div>
           <span className="text-zinc-600">|</span>
@@ -326,6 +424,7 @@ export default function App() {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }

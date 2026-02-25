@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
-import { projects } from '../src/projects/index';
+import { projects } from '../public/script/index.js';
 
 const OUTPUT_DIR = path.resolve(process.cwd(), 'public/audio');
 

@@ -1,5 +1,5 @@
 {
-  "name": "Code 2 Animation",
+  "name": "Code2Animation",
   "description": "A video generation project that renders code-based animations for ffmpeg synthesis.",
   "requestFramePermissions": []
 }
