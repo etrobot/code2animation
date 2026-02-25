@@ -74,51 +74,76 @@ function detectBrowserExecutable() {
 
 function loadRenderTimings(audioDir) {
   if (!fs.existsSync(audioDir)) return [];
-  const timingFiles = fs.readdirSync(audioDir).filter(f => f.endsWith('.json'));
-  const indexed = timingFiles.map(file => ({
-    file,
-    index: Number.parseInt(path.basename(file, '.json'), 10)
-  })).filter(item => Number.isFinite(item.index)).sort((a, b) => a.index - b.index);
+  const probeDurationSeconds = (filePath) => {
+    const result = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', filePath], {
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    });
+    if (result.status !== 0) return null;
+    const value = Number.parseFloat(String(result.stdout || '').trim());
+    if (!Number.isFinite(value) || value <= 0) return null;
+    return value;
+  };
+
+  const files = fs.readdirSync(audioDir);
+  const indices = new Set();
+
+  for (const f of files) {
+    const ext = path.extname(f).toLowerCase();
+    if (ext !== '.mp3' && ext !== '.json') continue;
+    const idx = Number.parseInt(path.basename(f, ext), 10);
+    if (Number.isFinite(idx)) indices.add(idx);
+  }
+
+  const indexed = Array.from(indices).sort((a, b) => a - b).map(index => ({ index }));
 
   const timings = [];
   let currentStart = 0;
   for (const item of indexed) {
     try {
-      const raw = fs.readFileSync(path.join(audioDir, item.file), 'utf-8');
-      const data = JSON.parse(raw);
-      let duration = 4;
+      let duration = null;
+      const mp3Path = path.join(audioDir, `${item.index}.mp3`);
+      if (fs.existsSync(mp3Path)) {
+        duration = probeDurationSeconds(mp3Path);
+      }
 
-      let maxEndSeconds = 0;
-      if (Array.isArray(data)) {
-        for (const entry of data) {
-          const candidates = [];
+      if (!Number.isFinite(duration) || duration <= 0) {
+        const jsonPath = path.join(audioDir, `${item.index}.json`);
+        const raw = fs.readFileSync(jsonPath, 'utf-8');
+        const data = JSON.parse(raw);
+        let maxEndSeconds = 0;
 
-          if (entry && typeof entry === 'object') {
-            candidates.push(entry);
-            if (Array.isArray(entry.Metadata)) {
-              for (const meta of entry.Metadata) candidates.push(meta);
+        if (Array.isArray(data)) {
+          for (const entry of data) {
+            const candidates = [];
+
+            if (entry && typeof entry === 'object') {
+              candidates.push(entry);
+              if (Array.isArray(entry.Metadata)) {
+                for (const meta of entry.Metadata) candidates.push(meta);
+              }
+            }
+
+            for (const c of candidates) {
+              if (!c || typeof c !== 'object') continue;
+              const type = c.Type;
+              if (type !== 'WordBoundary') continue;
+
+              const dataObj = c.Data && typeof c.Data === 'object' ? c.Data : c;
+              const offset = Number(dataObj.Offset);
+              const dur = Number(dataObj.Duration);
+              if (!Number.isFinite(offset) || !Number.isFinite(dur)) continue;
+
+              const endSeconds = (offset + dur) / 10000000;
+              if (endSeconds > maxEndSeconds) maxEndSeconds = endSeconds;
             }
           }
-
-          for (const c of candidates) {
-            if (!c || typeof c !== 'object') continue;
-            const type = c.Type;
-            if (type !== 'WordBoundary') continue;
-
-            const dataObj = c.Data && typeof c.Data === 'object' ? c.Data : c;
-            const offset = Number(dataObj.Offset);
-            const dur = Number(dataObj.Duration);
-            if (!Number.isFinite(offset) || !Number.isFinite(dur)) continue;
-
-            const endSeconds = (offset + dur) / 10000000;
-            if (endSeconds > maxEndSeconds) maxEndSeconds = endSeconds;
-          }
         }
+
+        if (maxEndSeconds > 0) duration = maxEndSeconds + 0.6;
       }
 
-      if (maxEndSeconds > 0) {
-        duration = maxEndSeconds + 0.6;
-      }
+      if (!Number.isFinite(duration) || duration <= 0) duration = 4;
       timings.push({ start: currentStart, end: currentStart + duration, duration });
       currentStart += duration;
     } catch {
@@ -264,6 +289,7 @@ async function main() {
   const startPort = Number.isFinite(portStart) ? portStart : BASE_PORT;
   let server = null;
   let browser = null;
+  let userDataDir = null;
   let baseUrl = null;
 
   try {
@@ -307,21 +333,30 @@ async function main() {
       browserLaunchArgs.push('--use-gl=desktop');
     }
 
+    userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), `c2a-render-${projectId}-`));
+    browserLaunchArgs.push(
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-crash-reporter',
+      '--disable-breakpad',
+      '--no-crashpad'
+    );
+
     browser = await puppeteer.launch({
       headless: 'new',
       executablePath,
       args: browserLaunchArgs,
+      userDataDir,
       defaultViewport: null
     });
 
     const page = await browser.newPage();
+    await page.evaluateOnNewDocument(() => {
+      window.suppressTTS = true;
+    });
     await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
     await page.goto(baseUrl, { waitUntil: 'networkidle0' });
     await sleep(1000);
-
-    await page.evaluate(() => {
-      window.suppressTTS = true;
-    });
 
     let frameIndex = 0;
     const digits = 6;
@@ -467,6 +502,9 @@ async function main() {
   } finally {
     await browser?.close?.().catch(() => {});
     server?.kill?.('SIGINT');
+    if (userDataDir && fs.existsSync(userDataDir)) {
+      fs.rmSync(userDataDir, { recursive: true, force: true });
+    }
   }
 }
 

@@ -5,7 +5,7 @@
       "clips": [
         {
           "type": "footagesAroundTitle",
-          "title": "CODE\n2\nANIMATION",
+          "title": "CODE\nto\nANIMATION",
           "speech": "Code2Animation is finally here. Transforming your scripts into cinematic visuals with pure control.",
           "media": [
             { "src": "/footage/code_editor.html", "word": "Code" },

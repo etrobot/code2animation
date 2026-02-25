@@ -369,7 +369,7 @@ export default function App() {
           className="relative bg-black shadow-2xl overflow-hidden border border-zinc-800"
         >
           {/* We don't always need the background layer for every clip now, but keep it for some */}
-          {currentClip && <BackgroundLayer />}
+          {currentClip && <BackgroundLayer time={currentTime} />}
 
           {currentClip && currentClip.type === 'footagesAroundTitle' && (
             <FootagesAroundTitleClip

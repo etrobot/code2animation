@@ -143,7 +143,7 @@ export const FootagesAroundTitleClip: React.FC<Props> = ({ clip, currentTime, pr
       <div className="intro-overlay-backdrop" />
 
       <div className="absolute inset-0 z-0">
-        <BackgroundLayer />
+        <BackgroundLayer time={currentTime} />
       </div>
 
       <div className={`intro-overlay-content ${isContentVisible ? 'content-visible' : 'content-hidden'}`}>
