@@ -198,23 +198,90 @@ media: [{ type: 'code', lang: 'python', content: 'print("hello")' }]
 
 ## Step 4 — Render the Video
 
+### Basic usage
+
 ```bash
+# Using pnpm scripts (recommended)
+pnpm run render:video-1      # renders video-1 project
+pnpm run render:video-2      # renders video-2 project
+
+# Or directly with node
 node scripts/render.js <projectId> --script <scriptName>
 ```
 
-Optional flags:
+### Command options
+
 ```bash
---port 5175       # specify dev server port if 3000 is taken
+--script <name>   # specify script file name (default: same as projectId)
+--port <number>   # dev server port (default: 5175)
 --force-audio     # force regeneration of TTS audio even if files exist
+--gpu             # enable GPU acceleration (macOS: h264_videotoolbox)
 ```
 
-Output: `public/video/render-<projectId>.mp4`
+### Log levels
+
+Control output verbosity with `LOG_LEVEL` environment variable:
+
+```bash
+# Minimal output (default) - only key progress info
+pnpm run render:video-1
+
+# Detailed debug output - shows all subprocess logs
+LOG_LEVEL=debug pnpm run render:video-1
+
+# Or use the debug script
+pnpm run render:debug video-1
+```
+
+**Log levels:**
+- `info` (default): Key progress, clip transitions, completion status
+- `debug`: All subprocess output (Vite, ffmpeg, Puppeteer, browser logs)
+- `warn`: Warnings and errors only
+- `error`: Errors only
+
+### Output
+
+Video saved to: `public/video/render-<projectId>.mp4`
+
+### How it works
 
 The renderer:
-1. Launches Puppeteer pointing at `http://localhost:<port>?script=<scriptName>`
-2. Captures frames for each clip with progress logging
-3. Composites audio + video with FFmpeg
-4. Writes the final MP4
+1. **Checks audio**: Generates TTS if missing (unless project has no speech)
+2. **Starts dev server**: Launches Vite on specified port
+3. **Opens browser**: Puppeteer in headless mode with time control
+4. **Renders frames**: Captures PNG screenshots at 30 FPS
+   - Uses word boundary data to sync media element timing
+   - Shows progress every 30 frames
+5. **Combines audio**: Concatenates all clip audio files
+6. **Encodes video**: FFmpeg merges frames + audio → MP4
+7. **Cleans up**: Removes temporary frames and audio files
+
+### Word boundary synchronization
+
+The renderer uses TTS word boundary data (`public/audio/<projectId>/<clipIndex>.json`) to precisely time when media elements appear:
+
+```json
+// Example: public/audio/video-2/0.json
+{
+  "Metadata": [{
+    "Type": "WordBoundary",
+    "Data": {
+      "Offset": 1000000,      // 0.1 seconds (in 100-nanosecond units)
+      "Duration": 3125000,    // 0.3125 seconds
+      "text": { "Text": "欢迎" }
+    }
+  }]
+}
+```
+
+When a clip has `media: [{ src: "/footage/code.html", word: "欢迎" }]`, the element appears at 0.1s (minus 0.4s pre-roll = immediately visible).
+
+### Performance tips
+
+- **GPU acceleration**: Use `--gpu` on macOS for faster encoding
+- **Parallel rendering**: Run multiple renders on different projects simultaneously
+- **Debug mode**: Only use `LOG_LEVEL=debug` when troubleshooting
+- **Clean builds**: Delete `public/video/frames-*` if render fails mid-process
 
 ### Rendering improvements
 
@@ -222,6 +289,7 @@ The renderer:
 - **Progress logging**: Shows per-clip progress and frame rendering status
 - **Silent project support**: Skips audio generation for projects without speech
 - **Forced audio regeneration**: Use `--force-audio` to regenerate TTS when speech content changes
+- **Quiet mode**: External process output hidden by default (ffmpeg, Vite, Puppeteer)
 
 ---
 
@@ -240,10 +308,28 @@ pnpm tsx scripts/generate-audio.ts ts-generics
 # 4. Start dev server (if not running)
 pnpm dev &
 
-# 5. Render
-node scripts/render.js ts-generics-video --script ts-generics
+# 5. Render (using pnpm script - recommended)
+pnpm run render:ts-generics
 
-# Output: public/video/render-ts-generics-video.mp4
+# Or with custom options
+LOG_LEVEL=info node scripts/render.js ts-generics --script ts-generics --gpu
+
+# Output: public/video/render-ts-generics.mp4
+```
+
+### Quick render workflow
+
+For projects already configured in package.json:
+
+```bash
+# Render video-1 (minimal output)
+pnpm run render:video-1
+
+# Render video-2 with debug logs
+LOG_LEVEL=debug pnpm run render:video-2
+
+# Force audio regeneration
+node scripts/render.js video-1 --force-audio
 ```
 
 ---
@@ -261,6 +347,9 @@ node scripts/render.js ts-generics-video --script ts-generics
 | Video ends prematurely | Use `--force-audio` to regenerate timing data |
 | Wrong language spoken | Check voice field in clips; ensure `media.word` matches speech language |
 | Media timing off | Verify `media.word` values match actual words in speech text |
+| Too many logs | Use default `LOG_LEVEL=info` or add to package.json scripts |
+| Render hangs | Check if dev server is running; try `--port` with different port |
+| Black frames | Verify footage HTML files work in browser; check iframe src paths |
 
 ---
 
