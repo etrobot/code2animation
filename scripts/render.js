@@ -20,6 +20,8 @@ const args = process.argv.slice(2);
 const projectId = args.find(arg => !arg.startsWith('--'));
 const forceAudio = args.includes('--force-audio');
 const useGpu = args.includes('--gpu');
+const isVertical = args.includes('--vertical');
+const skipCompress = args.includes('--skip-compress');
 
 function getArgValue(name) {
   const withEq = args.find(arg => arg.startsWith(`--${name}=`));
@@ -36,8 +38,8 @@ if (!projectId) {
 
 const scriptName = getArgValue('script') || projectId;
 
-const WIDTH = 1920;
-const HEIGHT = 1080;
+const WIDTH = isVertical ? 1080 : 1920;
+const HEIGHT = isVertical ? 1920 : 1080;
 const FPS = 30;
 const FRAME_MS = 1000 / FPS;
 
@@ -595,6 +597,25 @@ async function main() {
       process.exitCode = ffmpegResult.status || 1;
     } else {
       log.info(`✓ Render complete: ${FINAL_VIDEO}`);
+      
+      // Compress video
+      if (!skipCompress) {
+        log.info('Compressing video...');
+        const crf = getArgValue('crf') || '23';
+        const preset = getArgValue('preset') || 'medium';
+        const compressArgs = [FINAL_VIDEO, '--crf', crf, '--preset', preset];
+        
+        const compressResult = spawnSync('node', ['scripts/compress.js', ...compressArgs], {
+          stdio: 'inherit',
+          env: { ...process.env, LOG_LEVEL }
+        });
+        
+        if (compressResult.status !== 0) {
+          log.warn('Compression failed, but original video is available');
+        }
+      } else {
+        log.debug('Skipping compression (--skip-compress flag)');
+      }
       
       log.debug('Cleaning up temporary files...');
       if (fs.existsSync(FRAMES_DIR)) {

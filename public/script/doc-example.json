@@ -1,0 +1,30 @@
+{
+  "projects": {
+    "doc-demo": {
+      "name": "Document Spotlight Demo",
+      "background": "/footage/background.html",
+      "clips": [
+        {
+          "type": "docSpot",
+          "speech": "Let's explore the future of artificial intelligence and machine learning",
+          "docs": [
+            {
+              "src": "/doc/example.md",
+              "words": ["future"]
+            }
+          ]
+        },
+        {
+          "type": "docSpot",
+          "speech": "Machine learning is revolutionizing how we process data and make decisions",
+          "docs": [
+            {
+              "src": "/doc/example.md",
+              "words": ["learning"]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

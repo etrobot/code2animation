@@ -69,16 +69,26 @@ export const footagesAroundTitleAnimation = ({
     const caretVisible = isTyping && (Math.floor((currentTime - typingStart) * 2) % 2 === 0);
 
     const mediaConfigs = (clip.media || []).map((item, idx) => {
-        const targetWord = normalizeToken(item.word);
+        const targetWords = item.words.map(w => normalizeToken(w));
         let delay = 0;
 
-        if (wordTimings[targetWord] !== undefined) {
-            delay = wordTimings[targetWord];
+        // Try to find exact match for any of the target words
+        const exactMatch = targetWords.find(word => wordTimings[word] !== undefined);
+        
+        if (exactMatch) {
+            delay = wordTimings[exactMatch];
         } else {
+            // Try fuzzy matching for any of the target words
             const matchedDelay = Object.entries(wordTimings)
                 .filter(([key]) => {
                     if (!key) return false;
-                    return key === targetWord || key.startsWith(targetWord) || targetWord.startsWith(key) || key.includes(targetWord) || targetWord.includes(key);
+                    return targetWords.some(targetWord => 
+                        key === targetWord || 
+                        key.startsWith(targetWord) || 
+                        targetWord.startsWith(key) || 
+                        key.includes(targetWord) || 
+                        targetWord.includes(key)
+                    );
                 })
                 .reduce<number | null>((min, [, value]) => {
                     if (!Number.isFinite(value)) return min;
@@ -185,12 +195,12 @@ export const AroundTitleRenderer: React.FC<Props> = ({ data, clip, currentTime, 
                                         <iframe
                                             src={item.src}
                                             className="intro-media-floating-content border-none bg-transparent"
-                                            title={item.word}
+                                            title={item.words.join(', ')}
                                         />
                                     ) : (
                                         <img
                                             src={item.src}
-                                            alt={item.word}
+                                            alt={item.words.join(', ')}
                                             className="intro-media-floating-content"
                                         />
                                     )}

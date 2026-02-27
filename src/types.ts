@@ -1,9 +1,14 @@
-export type ClipType = 'footagesAroundTitle' | 'footagesFullScreen';
+export type ClipType = 'footagesAroundTitle' | 'footagesFullScreen' | 'docSpot';
 
 export interface MediaItem {
   src: string;
-  word: string; // The word in the title/speech that triggers this media
-  type?: 'video' | 'image' | 'html'; // Optional type for rendering
+  words: string[]; // The words in the title/speech that trigger this media
+  type?: 'video' | 'image' | 'html' | 'doc'; // Optional type for rendering
+}
+
+export interface DocItem {
+  src: string; // Path to markdown file in public/doc
+  words: string[]; // The words to search and highlight in the document
 }
 
 export interface VideoClip {
@@ -11,6 +16,7 @@ export interface VideoClip {
   title?: string;
   speech?: string;
   media?: MediaItem[];
+  docs?: DocItem[]; // For docSpot clips
   // TTS overrides
   voice?: string;
 }

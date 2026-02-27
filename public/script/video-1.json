@@ -11,15 +11,15 @@
           "media": [
             {
               "src": "/footage/code_editor.html",
-              "word": "Code"
+              "words": ["Code"]
             },
             {
               "src": "/footage/animation.html",
-              "word": "Animation"
+              "words": ["Animation"]
             },
             {
               "src": "/footage/cinematic_lens.html",
-              "word": "cinematic"
+              "words": ["cinematic"]
             }
           ]
         },
@@ -30,15 +30,15 @@
           "media": [
             {
               "src": "/footage/neural_ai.html",
-              "word": "pure"
+              "words": ["pure"]
             },
             {
               "src": "/footage/control_panel.html",
-              "word": "control"
+              "words": ["control"]
             },
             {
               "src": "/footage/pixel_grid.html",
-              "word": "pixel"
+              "words": ["pixel"]
             }
           ]
         },
@@ -49,11 +49,11 @@
           "media": [
             {
               "src": "/footage/code_editor.html",
-              "word": "code"
+              "words": ["code"]
             },
             {
               "src": "/footage/neural_ai.html",
-              "word": "rest"
+              "words": ["rest"]
             }
           ]
         },
@@ -64,11 +64,11 @@
           "media": [
             {
               "src": "/footage/future_portal.html",
-              "word": "future"
+              "words": ["future"]
             },
             {
               "src": "/footage/neural_ai.html",
-              "word": "experience"
+              "words": ["experience"]
             }
           ]
         }

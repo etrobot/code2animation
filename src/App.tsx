@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { FootageClip } from './components/FootageClip';
-import { Play, Pause, RefreshCw, SkipForward, SkipBack } from 'lucide-react';
+import { DocSpot } from './components/DocSpot';
+import { Play, Pause, RefreshCw, SkipForward, SkipBack, Smartphone, Monitor } from 'lucide-react';
 import { useTTS } from './hooks/useTTS';
 import { Project, VideoClip } from './types';
 
@@ -14,8 +15,9 @@ declare global {
 }
 
 export default function App() {
-  const STAGE_WIDTH = 1920;
-  const STAGE_HEIGHT = 1080;
+  const [isPortrait, setIsPortrait] = useState(false);
+  const STAGE_WIDTH = isPortrait ? 1080 : 1920;
+  const STAGE_HEIGHT = isPortrait ? 1920 : 1080;
   const isRecordMode = new URLSearchParams(window.location.search).get('record') === 'true' ||
     (typeof window !== 'undefined' && window.self !== window.top);
 
@@ -49,7 +51,7 @@ export default function App() {
       observer.observe(containerRef.current);
     }
     return () => observer.disconnect();
-  }, []);
+  }, [isPortrait]);
 
   useEffect(() => {
     if (isProjectsLoaded) return;
@@ -341,6 +343,11 @@ export default function App() {
     }
   };
 
+  const toggleOrientation = () => {
+    setIsPlaying(false);
+    setIsPortrait(!isPortrait);
+  };
+
   return (
     <div className="w-full h-screen bg-black text-white flex flex-col font-sans">
       {/* Viewport / Stage */}
@@ -378,7 +385,18 @@ export default function App() {
               />
             )}
 
-            {currentClip && (
+            {currentClip && currentClip.type === 'docSpot' && (
+              <DocSpot
+                key={`${activeProject}-${currentClipIndex}`}
+                clip={currentClip}
+                currentTime={currentTime}
+                projectId={activeProject}
+                clipIndex={currentClipIndex}
+                duration={clipDuration}
+              />
+            )}
+
+            {currentClip && currentClip.type !== 'docSpot' && (
               <FootageClip
                 key={`${activeProject}-${currentClipIndex}`}
                 clip={currentClip}
@@ -404,6 +422,16 @@ export default function App() {
       {!isRecordMode && (
         <div className="h-20 bg-zinc-900 border-t border-zinc-800 flex items-center px-8 justify-between">
           <div className="flex items-center space-x-4">
+            <button
+              onClick={toggleOrientation}
+              className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+              title={isPortrait ? "Switch to Landscape" : "Switch to Portrait"}
+            >
+              {isPortrait ? <Monitor size={20} /> : <Smartphone size={20} />}
+            </button>
+
+            <span className="text-zinc-600">|</span>
+
             <div className="flex flex-col">
               <span className="text-xs font-mono text-zinc-500 uppercase font-bold text-zinc-400">Project</span>
               <select
