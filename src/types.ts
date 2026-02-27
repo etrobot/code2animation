@@ -1,4 +1,4 @@
-export type ClipType = 'footagesAroundTitle' | 'footagesFullScreen' | 'docSpot';
+export type ClipType = 'footagesAroundTitle' | 'footagesFullScreen' | 'docSpot' | 'tweet';
 
 export interface MediaItem {
   src: string;
@@ -11,12 +11,21 @@ export interface DocItem {
   words: string[]; // The words to search and highlight in the document
 }
 
+export interface TweetItem {
+  avatar: string;
+  name: string;
+  handle: string;
+  content: string;
+  date?: string;
+}
+
 export interface VideoClip {
   type: ClipType;
   title?: string;
   speech?: string;
   media?: MediaItem[];
   docs?: DocItem[]; // For docSpot clips
+  tweet?: TweetItem; // For tweet clips
   // TTS overrides
   voice?: string;
 }

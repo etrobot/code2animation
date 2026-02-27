@@ -10,6 +10,7 @@ interface Props {
     projectId: string;
     clipIndex: number;
     duration: number;
+    isPortrait?: boolean;
 }
 
 interface ParsedSection {
@@ -20,12 +21,13 @@ interface ParsedSection {
     containsWords: boolean;
 }
 
-export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipIndex }) => {
+export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipIndex, isPortrait = false }) => {
     const [docContent, setDocContent] = useState<string>('');
     const [sections, setSections] = useState<ParsedSection[]>([]);
     const [currentDocIndex, setCurrentDocIndex] = useState(0);
     const [alignment, setAlignment] = useState<AudioAlignment | null>(null);
     const [highlightWords, setHighlightWords] = useState<string[]>([]);
+    const [activeSectionIndex, setActiveSectionIndex] = useState<number>(-1);
     const containerRef = useRef<HTMLDivElement>(null);
     const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
@@ -127,6 +129,8 @@ export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipInd
     useEffect(() => {
         if (sections.length === 0) return;
 
+        let targetSection = -1;
+
         // If we have alignment data, sync with speech
         if (alignment && alignment.character_start_times_seconds && alignment.characters && clip.speech) {
             let charIndex = 0;
@@ -147,28 +151,36 @@ export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipInd
             );
             
             if (hasSpokenWord) {
-                const targetSection = sections.findIndex((s: ParsedSection) => s.containsWords);
-                if (targetSection !== -1 && sectionRefs.current[targetSection]) {
-                    sectionRefs.current[targetSection]?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
-                }
+                targetSection = sections.findIndex((s: ParsedSection) => s.containsWords);
             }
         } else {
             // Without alignment, scroll to the target section immediately when loaded
-            const targetSection = sections.findIndex((s: ParsedSection) => s.containsWords);
-            if (targetSection !== -1 && sectionRefs.current[targetSection]) {
-                // Small delay to ensure DOM is ready
-                setTimeout(() => {
-                    sectionRefs.current[targetSection]?.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'center'
-                    });
-                }, 300);
+            targetSection = sections.findIndex((s: ParsedSection) => s.containsWords);
+        }
+
+        if (targetSection !== -1 && targetSection !== activeSectionIndex) {
+            setActiveSectionIndex(targetSection);
+            const targetElement = sectionRefs.current[targetSection];
+            const container = containerRef.current;
+            
+            if (targetElement && container) {
+                // Calculate position to center the element
+                const elementRect = targetElement.getBoundingClientRect();
+                const containerRect = container.getBoundingClientRect();
+                
+                // We need to calculate the offset relative to the container's current scroll position
+                // offsetTop is relative to the offsetParent (which should be doc-content or container)
+                const relativeTop = targetElement.offsetTop;
+                
+                const targetScrollTop = relativeTop - (container.clientHeight / 2) + (targetElement.clientHeight / 2);
+                
+                container.scrollTo({
+                    top: Math.max(0, targetScrollTop),
+                    behavior: 'smooth'
+                });
             }
         }
-    }, [currentTime, alignment, clip.speech, sections, highlightWords]);
+    }, [currentTime, alignment, clip.speech, sections, highlightWords, activeSectionIndex]);
 
     // Highlight text containing any of the words in HTML
     const highlightHtml = (html: string) => {
@@ -183,7 +195,7 @@ export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipInd
     };
 
     return (
-        <div className="doc-spot-container" ref={containerRef}>
+        <div className={`doc-spot-container ${isPortrait ? 'portrait' : ''}`} ref={containerRef}>
             {sections.length === 0 && (
                 <div className="doc-loading">
                     <p>Loading document...</p>

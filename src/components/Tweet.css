@@ -1,0 +1,117 @@
+.tweet-container {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+    z-index: 20;
+    pointer-events: none; /* Let clicks pass through if needed, though this is video */
+}
+
+.tweet-container.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.tweet-card {
+    background: #15202b; /* Twitter dark mode bg */
+    border: 1px solid #38444d;
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 800px;
+    width: 90%;
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    /* Green glare/glow */
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.4), 0 0 40px rgba(0, 255, 0, 0.2), inset 0 0 20px rgba(0, 255, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.tweet-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+/* Animations */
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.tweet-avatar, .tweet-user-info, .tweet-content {
+    opacity: 0; /* Initially hidden */
+    animation: slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.tweet-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    margin-right: 16px;
+    object-fit: cover;
+    animation-delay: 0.1s;
+}
+
+.tweet-user-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    animation-delay: 0.2s;
+}
+
+.tweet-content {
+    font-size: 28px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    color: #ffffff;
+    animation-delay: 0.3s;
+}
+
+.tweet-content a {
+    color: #1d9bf0;
+    text-decoration: none;
+}
+
+/* Portrait adjustments */
+.tweet-container.portrait .tweet-card {
+    max-width: 90%;
+    padding: 40px;
+    border-radius: 32px;
+}
+
+.tweet-container.portrait .tweet-header {
+    margin-bottom: 32px;
+}
+
+.tweet-container.portrait .tweet-avatar {
+    width: 96px;
+    height: 96px;
+    margin-right: 24px;
+}
+
+.tweet-container.portrait .tweet-name {
+    font-size: 36px;
+}
+
+.tweet-container.portrait .tweet-handle {
+    font-size: 28px;
+}
+
+.tweet-container.portrait .tweet-content {
+    font-size: 42px;
+    line-height: 1.4;
+}

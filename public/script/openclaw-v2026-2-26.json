@@ -1,0 +1,131 @@
+{
+  "projects": {
+    "openclaw-v2026": {
+      "name": "OpenClaw v2026.2.26 Release",
+      "background": "/footage/background.html",
+      "fps": 30,
+      "clips": [
+        {
+          "type": "tweet",
+          "duration": 4,
+          "speech": "重磅！OpenClaw v2026 测试版来了，带来外部密钥管理和线程绑定代理！",
+          "tweet": {
+            "avatar": "https://pbs.twimg.com/profile_images/1131851609774985216/OcsssQ9J_400x400.png",
+            "name": "Peter Steinberger",
+            "handle": "@steipete",
+            "content": "New @openclaw beta bits are up! \nExternal Secrets Management (openclaw secrets), CP thread-bound agents (first-class runtime), web socket support for codex and loads more!"
+          }
+        },
+        {
+          "type": "docSpot",
+          "duration": 3,
+          "speech": "OpenClaw v2026.2.26 版本，正式发布！",
+          "docs": [
+            {
+              "src": "/doc/openclaw-v2026-2-26.md",
+              "words": ["OpenClaw", "v2026.2.26"]
+            }
+          ]
+        },
+        {
+          "type": "docSpot",
+          "duration": 5,
+          "speech": "首先，全新的密钥管理工作流，支持审计、配置、应用和重载，安全性拉满！",
+          "docs": [
+            {
+              "src": "/doc/openclaw-v2026-2-26.md",
+              "words": ["secrets", "workflow"]
+            }
+          ]
+        },
+        {
+          "type": "docSpot",
+          "duration": 5,
+          "speech": "ACP 代理升级为一等公民运行时，生命周期控制更强大，线程回复更智能！",
+          "docs": [
+            {
+              "src": "/doc/openclaw-v2026-2-26.md",
+              "words": ["ACP", "runtimes"]
+            }
+          ]
+        },
+        {
+          "type": "docSpot",
+          "duration": 4,
+          "speech": "新增 CLI 命令，轻松管理账户路由，bind 和 unbind 一键搞定！",
+          "docs": [
+            {
+              "src": "/doc/openclaw-v2026-2-26.md",
+              "words": ["CLI", "bind", "unbind"]
+            }
+          ]
+        },
+        {
+          "type": "docSpot",
+          "duration": 4,
+          "speech": "OpenAI-Codex 默认使用 WebSocket，性能飙升，还有 SSE 兜底！",
+          "docs": [
+            {
+              "src": "/doc/openclaw-v2026-2-26.md",
+              "words": ["WebSocket", "SSE"]
+            }
+          ]
+        },
+        {
+          "type": "docSpot",
+          "duration": 4,
+          "speech": "频道插件现在可以自定义交互式引导流程，配置更灵活！",
+          "docs": [
+            {
+              "src": "/doc/openclaw-v2026-2-26.md",
+              "words": ["plugins", "onboarding"]
+            }
+          ]
+        },
+        {
+          "type": "docSpot",
+          "duration": 4,
+          "speech": "安全升级！启动 Gemini CLI OAuth 前，会明确提示账户风险！",
+          "docs": [
+            {
+              "src": "/doc/openclaw-v2026-2-26.md",
+              "words": ["Auth", "security"]
+            }
+          ]
+        },
+        {
+          "type": "docSpot",
+          "duration": 5,
+          "speech": "Android 设备功能大扩展，新增设备状态、信息查询和通知列表支持！",
+          "docs": [
+            {
+              "src": "/doc/openclaw-v2026-2-26.md",
+              "words": ["Android", "device"]
+            }
+          ]
+        },
+        {
+          "type": "docSpot",
+          "duration": 5,
+          "speech": "还修复了 Telegram、Google Chat、Teams 等平台的大量问题，体验更流畅！",
+          "docs": [
+            {
+              "src": "/doc/openclaw-v2026-2-26.md",
+              "words": ["Fixes", "Telegram", "Teams"]
+            }
+          ]
+        },
+        {
+          "type": "footagesFullScreen",
+          "title": "你最期待\n哪个功能？",
+          "speech": "你最期待哪个功能？评论区告诉我！别忘了点赞关注，咱们下期见！",
+          "media": [
+            { "src": "/footage/chatbot.html", "words": ["评论"] },
+            { "src": "/footage/future_portal.html", "words": ["期待"] },
+            { "src": "/footage/neural_ai.html", "words": ["功能"] }
+          ]
+        }
+      ]
+    }
+  }
+}

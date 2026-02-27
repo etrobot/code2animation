@@ -32,28 +32,73 @@
             overflow: hidden;
         }
 
-        /* Large Sparse Grid */
+        /* Large Sparse Grid - Base Style */
         .grid {
             position: absolute;
-            width: 200vmax;
-            /* Massive size to cover rotation edges */
-            height: 200vmax;
+            width: 150vmax;
+            height: 150vmax;
             background-image:
                 linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
                 linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
-            background-size: 120px 120px;
-            /* Sparse grid sizing */
-            animation: rotate-grid 60s linear infinite;
+            background-size: 200px 200px;
             z-index: 1;
+            opacity: 0;
         }
 
-        @keyframes rotate-grid {
-            from {
-                transform: rotate(0deg);
-            }
+        /* First Layer */
+        .grid-layer-1 {
+            animation: grid-cycle-1 20s linear infinite;
+        }
 
-            to {
-                transform: rotate(360deg);
+        /* Second Layer - Starts halfway through first layer's cycle */
+        .grid-layer-2 {
+            animation: grid-cycle-2 20s linear infinite;
+            animation-delay: 10s;
+        }
+
+        @keyframes grid-cycle-1 {
+            0% {
+                opacity: 0;
+                transform: rotate(0deg) scale(0.5);
+            }
+            25% {
+                opacity: 1;
+                transform: rotate(45deg) scale(1.0);
+            }
+            50% {
+                opacity: 1;
+                transform: rotate(90deg) scale(1.8);
+            }
+            75% {
+                opacity: 0.5;
+                transform: rotate(135deg) scale(2.8);
+            }
+            100% {
+                opacity: 0;
+                transform: rotate(180deg) scale(4.0);
+            }
+        }
+
+        @keyframes grid-cycle-2 {
+            0% {
+                opacity: 0;
+                transform: rotate(22deg) scale(0.5);
+            }
+            25% {
+                opacity: 1;
+                transform: rotate(67deg) scale(1.0);
+            }
+            50% {
+                opacity: 1;
+                transform: rotate(112deg) scale(1.8);
+            }
+            75% {
+                opacity: 0.5;
+                transform: rotate(157deg) scale(2.8);
+            }
+            100% {
+                opacity: 0;
+                transform: rotate(202deg) scale(4.0);
             }
         }
 
@@ -70,7 +115,8 @@
 
 <body>
     <div class="container">
-        <div class="grid"></div>
+        <div class="grid grid-layer-1"></div>
+        <div class="grid grid-layer-2"></div>
         <div class="vignette"></div>
     </div>
 </body>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { FootageClip } from './components/FootageClip';
 import { DocSpot } from './components/DocSpot';
+import { Tweet } from './components/Tweet';
 import { Play, Pause, RefreshCw, SkipForward, SkipBack, Smartphone, Monitor } from 'lucide-react';
 import { useTTS } from './hooks/useTTS';
 import { Project, VideoClip } from './types';
@@ -393,10 +394,23 @@ export default function App() {
                 projectId={activeProject}
                 clipIndex={currentClipIndex}
                 duration={clipDuration}
+                isPortrait={isPortrait}
               />
             )}
 
-            {currentClip && currentClip.type !== 'docSpot' && (
+            {currentClip && currentClip.type === 'tweet' && (
+              <Tweet
+                key={`${activeProject}-${currentClipIndex}`}
+                clip={currentClip}
+                currentTime={currentTime}
+                projectId={activeProject}
+                clipIndex={currentClipIndex}
+                duration={clipDuration}
+                isPortrait={isPortrait}
+              />
+            )}
+
+            {currentClip && (currentClip.type === 'footagesAroundTitle' || currentClip.type === 'footagesFullScreen') && (
               <FootageClip
                 key={`${activeProject}-${currentClipIndex}`}
                 clip={currentClip}
