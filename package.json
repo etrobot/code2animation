@@ -10,8 +10,7 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
     "render": "LOG_LEVEL=info node scripts/render.js",
-    "render:video-1": "LOG_LEVEL=info node scripts/render.js video-1",
-    "render:video-2": "LOG_LEVEL=info node scripts/render.js video-2",
+    "render-portrait": "LOG_LEVEL=info node scripts/render.js --portrait",
     "render:debug": "LOG_LEVEL=debug node scripts/render.js"
   },
   "dependencies": {

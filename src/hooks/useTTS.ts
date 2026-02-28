@@ -138,16 +138,26 @@ export function useTTS({ clip, projectId, clipIndex, onWordBoundary, onEnd }: Us
     return null;
   }, []);
 
+  // Get combined speech text from clip
+  const getCombinedSpeech = useCallback((clip: VideoClip): string => {
+    if (clip.docSegments && clip.docSegments.length > 0) {
+      // For docSegments, combine all speech segments
+      return clip.docSegments.map(segment => segment.speech).join(' ');
+    }
+    return clip.speech || '';
+  }, []);
+
   // Sync mode (for App.tsx)
   useEffect(() => {
     if (clip && projectId && clipIndex !== undefined) {
-      if (!clip.speech || !clip.speech.trim()) {
+      const combinedSpeech = getCombinedSpeech(clip);
+      if (!combinedSpeech.trim()) {
         stop();
         setAlignment(null);
         setDuration(0);
         setAudio(null);
       } else {
-        loadResource(projectId, clipIndex, clip.speech, {
+        loadResource(projectId, clipIndex, combinedSpeech, {
           voice: clip.voice
         });
       }
@@ -156,7 +166,7 @@ export function useTTS({ clip, projectId, clipIndex, onWordBoundary, onEnd }: Us
       stop();
       if (currentUrlRef.current) URL.revokeObjectURL(currentUrlRef.current);
     };
-  }, [clip?.speech, projectId, clipIndex, loadResource, stop]);
+  }, [clip, projectId, clipIndex, loadResource, stop, getCombinedSpeech]);
 
   // Imperative mode (for user snippet compliance)
   const speak = useCallback(async (text: string, options?: { projectId?: string, stepIndex?: number }) => {

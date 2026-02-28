@@ -76,6 +76,22 @@ interface Props {
 export const FullScreenRenderer: React.FC<Props> = ({ data, clip }) => {
     const { typedLines, caretVisible, mediaLayers, underlineProgress } = data;
 
+    // 计算自适应字体大小
+    const titleText = clip.title || '';
+    const totalChars = titleText.replace(/\n/g, '').length;
+
+    // 根据字符数量计算字体大小
+    const getFontSize = (charCount: number) => {
+        if (charCount <= 10) return 11; // 短文本保持大字体
+        if (charCount <= 20) return 9;
+        if (charCount <= 30) return 5;
+        if (charCount <= 40) return 4;
+        if (charCount <= 60) return 2;
+        return 1; // 长文本使用较小字体
+    };
+
+    const fontSize = getFontSize(totalChars);
+
     return (
         <div className="relative w-full h-full flex items-center justify-center bg-transparent overflow-hidden">
             {/* Full Screen Media Background */}
@@ -111,12 +127,11 @@ export const FullScreenRenderer: React.FC<Props> = ({ data, clip }) => {
                 })}
             </div>
 
-
-
-
-
             <div className="text-center z-30 relative">
-                <div className="text-[12rem] font-black text-white mb-4 tracking-tighter leading-[0.8] mix-blend-difference drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)] uppercase">
+                <div
+                    className="font-black text-white mb-4 tracking-tighter leading-[0.8] mix-blend-difference drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)] uppercase"
+                    style={{ fontSize: `${fontSize}rem` }}
+                >
                     {typedLines.map((line: string, lineIdx: number) => {
                         const isLastLine = lineIdx === typedLines.length - 1;
                         return (

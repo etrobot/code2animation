@@ -69,6 +69,23 @@ public/script/<scriptName>.json
       "background":"/footage/background.html",
       "clips": [
         {
+          "type": "tweet",
+          "speech": "This viral tweet perfectly captures the current AI sentiment",
+          "tweet": {
+            "avatar": "/images/user-avatar.jpg",
+            "name": "Tech Innovator",
+            "handle": "@techinnovator",
+            "content": "AI is not just changing how we code, it's revolutionizing how we think about problem-solving. The future is here! 🚀 #AI #TechRevolution"
+          }
+        },
+        {
+          "type": "docSpot",
+          "speech": "Let's explore the future of artificial intelligence",
+          "docs": [
+            { "src": "/doc/ai-guide.md", "word": "future" }
+          ]
+        },
+        {
           "type": "footagesAroundTitle",
           "title": "CODE\n2\nANIMATION",
           "speech": "Code2Animation is finally here. Transforming your scripts into cinematic visuals with pure control.",
@@ -98,6 +115,8 @@ public/script/<scriptName>.json
 
 | Type | Visual style |
 |------|-------------|
+| `tweet` | Twitter-style post display with avatar, name, and content |
+| `docSpot` | Markdown document viewer with keyword highlighting and auto-scroll |
 | `footagesAroundTitle` | Title/subtitle centered, media clips around it |
 | `footagesFullScreen` | Media fills entire screen |
 
@@ -108,18 +127,35 @@ interface MediaItem {
   src?: string;       // path relative to public/ e.g. "footage/demo.mp4"
   word?: string;      // trigger word for timing synchronization
 }
+
+interface DocItem {
+  src: string;        // path to markdown file e.g. "/doc/guide.md"
+  word: string;       // keyword to highlight and scroll to in the document
+}
+
+interface TweetItem {
+  avatar: string;     // path to avatar image e.g. "/images/avatar.jpg"
+  name: string;       // display name e.g. "John Doe"
+  handle: string;     // Twitter handle e.g. "@johndoe"
+  content: string;    // tweet text content (supports @mentions, #hashtags, links)
+  date?: string;      // optional date string
+}
 ```
 
 ### Script writing best practices
 
 - Keep each `speech` natural and conversational — it becomes the spoken narration.
 - Match `duration` to speech length: ~130 words/minute as a guide.
+- Use `tweet` clips for viral content, social proof, or engaging video openings.
+- Use `docSpot` for documentation/tutorial content with keyword highlighting.
 - Use `footagesAroundTitle` for intro/transition clips, `footagesFullScreen` for deep-dives.
 - Vary themes across clips for visual interest (`dark` → `neon` → `light`).
 - For code clips, prefer short, illustrative snippets (< 20 lines).
 - Aim for 5–12 clips per video (60–180 seconds total).
 - Use `media.word` fields to synchronize visual elements with spoken words.
 - For Chinese content, ensure `media.word` matches Chinese words in the speech text.
+- For `tweet` clips, use realistic avatars and engaging content with @mentions and #hashtags.
+- For `docSpot` clips, place markdown files in `public/doc/` and use `docs.word` to specify keywords to highlight.
 
 ---
 
@@ -143,11 +179,99 @@ This reads each clip's `speech` field, synthesizes audio using Microsoft Edge TT
 
 ## Step 3 — Create Visual Assets
 
-### Option A: Use existing footage
+### Option A: Use Tweet for social content
+
+For displaying Twitter-style posts with engaging social proof:
+
+1. **Prepare avatar image** in `public/images/`:
+
+```
+public/images/user-avatar.jpg
+```
+
+2. **Reference in script**:
+
+```json
+{
+  "type": "tweet",
+  "speech": "This viral tweet perfectly captures the current AI sentiment",
+  "tweet": {
+    "avatar": "/images/user-avatar.jpg",
+    "name": "Tech Innovator",
+    "handle": "@techinnovator",
+    "content": "AI is not just changing how we code, it's revolutionizing how we think about problem-solving. The future is here! 🚀 #AI #TechRevolution"
+  }
+}
+```
+
+**Tweet features:**
+- Twitter-style dark mode design with green glow effects
+- Automatic parsing of @mentions, #hashtags, and links (colored blue)
+- Smooth fade-in animation with staggered element appearance
+- Responsive design for both landscape and portrait orientations
+- Transparent background to show animated backgrounds
+
+**Tweet best practices:**
+- Use high-quality avatar images (64x64px minimum)
+- Keep content engaging and realistic (under 280 characters)
+- Include relevant @mentions and #hashtags for authenticity
+- Perfect for video openings to establish context or credibility
+- Use emojis to make content more engaging
+- Combine with animated backgrounds for visual appeal
+
+### Option B: Use DocSpot for documentation
+
+For displaying markdown documentation with keyword highlighting and auto-scroll:
+
+1. **Create markdown file** in `public/doc/`:
+
+```markdown
+<!-- public/doc/ai-guide.md -->
+# Introduction to AI
+
+Artificial Intelligence is transforming the world...
+
+## Machine Learning
+
+Machine learning enables systems to learn from data...
+
+## The Future of AI
+
+The future holds endless possibilities for AI applications...
+```
+
+2. **Reference in script**:
+
+```json
+{
+  "type": "docSpot",
+  "speech": "Let's explore the future of artificial intelligence",
+  "docs": [
+    { "src": "/doc/ai-guide.md", "word": "future" }
+  ]
+}
+```
+
+**DocSpot features:**
+- Renders markdown with full formatting (headings, lists, code blocks, links, etc.)
+- Automatically highlights the specified keyword with glowing green background
+- Scrolls to sections containing the keyword when spoken
+- Supports both English and Chinese text
+- 90% opacity black background to show animated background
+- Responsive design for mobile and desktop
+
+**DocSpot best practices:**
+- Use clear section headings (# ## ###) to organize content
+- Keep keyword simple and unique for accurate highlighting
+- Test markdown rendering by viewing the file directly
+- Use code blocks for technical content
+- Combine with animated backgrounds for visual interest
+
+### Option C: Use existing footage
 
 Place video/image files in `public/footage/` and reference them via `src` in `MediaItem`.
 
-### Option B: Create custom HTML animations
+### Option D: Create custom HTML animations
 
 For dynamic visuals, create self-contained HTML files in `public/footage/`:
 
@@ -187,7 +311,7 @@ Puppeteer will render this HTML frame-by-frame during the render step.
 - Test locally by opening the HTML in a browser first
 - Prefer smooth, loopable animations for background footage
 
-### Option C: Code snippets (inline)
+### Option E: Code snippets (inline)
 
 No file needed — pass code directly:
 ```js

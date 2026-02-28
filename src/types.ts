@@ -11,6 +11,11 @@ export interface DocItem {
   words: string[]; // The words to search and highlight in the document
 }
 
+export interface DocSpotSegment {
+  speech: string;
+  startWith: string; // The keyword/phrase that triggers this segment
+}
+
 export interface TweetItem {
   avatar: string;
   name: string;
@@ -24,7 +29,9 @@ export interface VideoClip {
   title?: string;
   speech?: string;
   media?: MediaItem[];
-  docs?: DocItem[]; // For docSpot clips
+  docs?: DocItem[]; // For legacy docSpot clips
+  docSrc?: string; // Document source path for docSpot clips
+  docSegments?: DocSpotSegment[]; // For multi-segment docSpot clips
   tweet?: TweetItem; // For tweet clips
   // TTS overrides
   voice?: string;

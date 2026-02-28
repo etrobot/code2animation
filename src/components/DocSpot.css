@@ -27,8 +27,8 @@
     justify-content: center;
     height: 100%;
     font-size: 1.5em;
-    color: #00ff00;
-    text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+    color: #00f0ff;
+    text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
 }
 
 .doc-content {
@@ -54,10 +54,17 @@
 }
 
 .doc-section.contains-word {
-    background: rgba(0, 20, 0, 0.92); /* 92% opacity with slight green tint */
-    border: 2px solid rgba(0, 255, 0, 0.8);
-    box-shadow: 0 0 40px rgba(0, 255, 0, 0.3), 0 8px 32px rgba(0, 0, 0, 0.3);
+    background: rgba(30, 10, 20, 0.92); /* 92% opacity with slight pink tint */
+    border: 2px solid rgba(255, 0, 127, 0.8);
+    box-shadow: 0 0 40px rgba(255, 0, 127, 0.3), 0 8px 32px rgba(0, 0, 0, 0.3);
     transform: scale(1.02);
+}
+
+.doc-section.active-section {
+    background: rgba(10, 25, 30, 0.95); /* Even more prominent for active section */
+    border: 3px solid rgba(0, 240, 255, 1);
+    box-shadow: 0 0 60px rgba(0, 240, 255, 0.5), 0 12px 40px rgba(0, 0, 0, 0.4);
+    transform: scale(1.05);
 }
 
 .doc-section-title {
@@ -100,19 +107,19 @@
 }
 
 .doc-section-content code {
-    background: rgba(0, 255, 0, 0.15);
-    border: 1px solid rgba(0, 255, 0, 0.3);
+    background: rgba(255, 184, 0, 0.15);
+    border: 1px solid rgba(255, 184, 0, 0.3);
     padding: 0.1em 0.3em;
     border-radius: 0.3em;
     font-family: 'Courier New', monospace;
     font-size: 0.9em;
-    color: #00ff00;
-    text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    color: #ffb800;
+    text-shadow: 0 0 10px rgba(255, 184, 0, 0.5);
 }
 
 .doc-section-content pre {
     background: rgba(0, 0, 0, 0.7);
-    border: 1px solid rgba(0, 255, 0, 0.3);
+    border: 1px solid rgba(255, 0, 127, 0.3);
     padding: 1em;
     border-radius: 0.5em;
     overflow-x: auto;
@@ -131,18 +138,18 @@
 
 /* Highlight style */
 .doc-highlight {
-    background: rgba(0, 255, 0, 0.4);
+    background: rgba(255, 184, 0, 0.4);
     color: #ffffff;
     padding: 0 0.1em;
     border-radius: 0.2em;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.6);
+    box-shadow: 0 0 15px rgba(255, 184, 0, 0.6);
     animation: highlight-pulse 2s infinite;
 }
 
 @keyframes highlight-pulse {
-    0% { box-shadow: 0 0 15px rgba(0, 255, 0, 0.6); }
-    50% { box-shadow: 0 0 25px rgba(0, 255, 0, 0.9); }
-    100% { box-shadow: 0 0 15px rgba(0, 255, 0, 0.6); }
+    0% { box-shadow: 0 0 15px rgba(255, 184, 0, 0.6); }
+    50% { box-shadow: 0 0 25px rgba(255, 184, 0, 0.9); }
+    100% { box-shadow: 0 0 15px rgba(255, 184, 0, 0.6); }
 }
 
 /* Scrollbar styling */

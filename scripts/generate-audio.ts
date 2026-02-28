@@ -2,6 +2,23 @@ import fs from 'fs';
 import path from 'path';
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 
+// Type definitions for better type safety
+interface DocSegment {
+    speech: string;
+    startWith: string;
+}
+
+interface VideoClip {
+    speech?: string;
+    docSegments?: DocSegment[];
+    voice?: string;
+}
+
+interface Project {
+    name: string;
+    clips: VideoClip[];
+}
+
 const SCRIPT_JSON_PATH = path.resolve(process.cwd(), 'public', 'script', 'index.json');
 
 function loadProjectsFromScriptJson() {
@@ -11,7 +28,7 @@ function loadProjectsFromScriptJson() {
     const raw = fs.readFileSync(SCRIPT_JSON_PATH, 'utf-8');
     const data = JSON.parse(raw);
     
-    const projects: Record<string, any> = {};
+    const projects: Record<string, Project> = {};
 
     // 1. Load inline projects
     if (data.projects && typeof data.projects === 'object') {
@@ -50,6 +67,35 @@ function loadProjectsFromScriptJson() {
 
 const OUTPUT_DIR = path.resolve(process.cwd(), 'public/audio');
 
+// Helper function to split long text into chunks (for future use)
+function splitTextIntoChunks(text: string, maxChars: number): string[] {
+    const sentences = text.split(/[。！？.!?]/);
+    const chunks: string[] = [];
+    let currentChunk = '';
+    
+    for (const sentence of sentences) {
+        const trimmedSentence = sentence.trim();
+        if (!trimmedSentence) continue;
+        
+        const sentenceWithPunctuation = trimmedSentence + (text.includes('。') ? '。' : '.');
+        
+        if ((currentChunk + sentenceWithPunctuation).length <= maxChars) {
+            currentChunk += sentenceWithPunctuation;
+        } else {
+            if (currentChunk) {
+                chunks.push(currentChunk.trim());
+            }
+            currentChunk = sentenceWithPunctuation;
+        }
+    }
+    
+    if (currentChunk) {
+        chunks.push(currentChunk.trim());
+    }
+    
+    return chunks;
+}
+
 async function ensureDir(dir: string) {
     if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
@@ -58,7 +104,7 @@ async function ensureDir(dir: string) {
 
 async function generateAudioForProject(projectId: string) {
     const projects = loadProjectsFromScriptJson();
-    const project = projects[projectId as keyof typeof projects];
+    const project = projects[projectId];
     if (!project) {
         console.error(`Project ${projectId} not found`);
         return;
@@ -72,16 +118,46 @@ async function generateAudioForProject(projectId: string) {
 
     for (let i = 0; i < project.clips.length; i++) {
         const clip = project.clips[i];
-        if (!clip.speech) {
+        
+        // Get speech text from either docSegments or speech field
+        let speechText = '';
+        if (clip.docSegments && Array.isArray(clip.docSegments) && clip.docSegments.length > 0) {
+            // For docSegments, combine all speech segments
+            speechText = clip.docSegments
+                .filter((segment) => segment && typeof segment.speech === 'string' && segment.speech.trim())
+                .map((segment) => segment.speech)
+                .join(' ');
+        } else if (clip.speech && typeof clip.speech === 'string') {
+            speechText = clip.speech;
+        }
+        
+        if (!speechText.trim()) {
             console.log(`Skipping clip ${i + 1} (no speech)`);
             continue;
         }
 
+        // Check character limit for Edge-TTS
+        const charCount = speechText.length;
+        const maxChars = 1000; // Conservative limit
+        
+        if (charCount > maxChars) {
+            console.warn(`⚠️  Clip ${i + 1} has ${charCount} characters, exceeding recommended limit of ${maxChars}`);
+            console.warn(`Consider splitting into multiple clips or shortening the text.`);
+            console.warn(`Text preview: ${speechText.substring(0, 100)}...`);
+            
+            // Option: Auto-split (commented out for safety)
+            // const chunks = splitTextIntoChunks(speechText, maxChars);
+            // console.log(`Would split into ${chunks.length} chunks`);
+        } else {
+            console.log(`✅ Clip ${i + 1} character count: ${charCount}/${maxChars}`);
+        }
+
         // Determine voice for this clip
-        const isChinese = /[\u4e00-\u9fa5]/.test(clip.speech);
+        const isChinese = /[\u4e00-\u9fa5]/.test(speechText);
         const voice = clip.voice || (isChinese ? 'zh-CN-YunjianNeural' : 'en-US-GuyNeural');
 
         console.log(`Generating clip ${i + 1}/${project.clips.length} using voice: ${voice}...`);
+        console.log(`Speech text: ${speechText.substring(0, 100)}${speechText.length > 100 ? '...' : ''}`);
 
         await tts.setMetadata(
             voice,
@@ -95,7 +171,7 @@ async function generateAudioForProject(projectId: string) {
         const metaPath = path.join(projectDir, `${i}.json`);
 
         try {
-            const { audioStream, metadataStream } = tts.toStream(clip.speech);
+            const { audioStream, metadataStream } = tts.toStream(speechText);
 
             const audioFile = fs.createWriteStream(audioPath);
             const metadata: any[] = [];

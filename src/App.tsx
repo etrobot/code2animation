@@ -16,7 +16,10 @@ declare global {
 }
 
 export default function App() {
-  const [isPortrait, setIsPortrait] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('portrait') === 'true';
+  });
   const STAGE_WIDTH = isPortrait ? 1080 : 1920;
   const STAGE_HEIGHT = isPortrait ? 1920 : 1080;
   const isRecordMode = new URLSearchParams(window.location.search).get('record') === 'true' ||
@@ -29,6 +32,7 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [stageScale, setStageScale] = useState(1);
@@ -254,17 +258,22 @@ export default function App() {
     return () => cancelAnimationFrame(requestRef.current);
   }, [isPlaying, animate]);
 
-  // Handle clip switching
+  // Handle clip switching with fade out
   useEffect(() => {
-    if (clipDuration > 0 && currentTime >= clipDuration && hasClips) {
+    if (clipDuration > 0 && currentTime >= clipDuration && hasClips && !isTransitioning) {
       if (currentClipIndex < project.clips.length - 1) {
-        setCurrentClipIndex(prev => prev + 1);
-        setCurrentTime(0);
+        setIsTransitioning(true);
+        // Start fade out, then switch clip after 300ms
+        setTimeout(() => {
+          setCurrentClipIndex(prev => prev + 1);
+          setCurrentTime(0);
+          setIsTransitioning(false);
+        }, 300);
       } else {
         setIsPlaying(false);
       }
     }
-  }, [currentTime, clipDuration, currentClipIndex, project.clips.length, hasClips]);
+  }, [currentTime, clipDuration, currentClipIndex, project.clips.length, hasClips, isTransitioning]);
 
   // Expose seekTo for headless rendering
   useEffect(() => {
@@ -284,7 +293,19 @@ export default function App() {
     const checkAudio = async () => {
       try {
         const projectClips = projects[activeProject]?.clips || [];
-        const hasAnySpeech = projectClips.some(c => typeof c?.speech === 'string' && c.speech.trim().length > 0);
+        const hasAnySpeech = projectClips.some(c => {
+          // Check legacy speech field
+          if (typeof c?.speech === 'string' && c.speech.trim().length > 0) {
+            return true;
+          }
+          // Check new docSegments structure
+          if (c?.docSegments && Array.isArray(c.docSegments)) {
+            return c.docSegments.some(segment =>
+              typeof segment?.speech === 'string' && segment.speech.trim().length > 0
+            );
+          }
+          return false;
+        });
         if (!hasAnySpeech) {
           setIsGenerating(false);
           return;
@@ -333,14 +354,22 @@ export default function App() {
   };
   const nextClip = () => {
     if (currentClipIndex < project.clips.length - 1) {
-      setCurrentClipIndex(prev => prev + 1);
-      setCurrentTime(0);
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentClipIndex(prev => prev + 1);
+        setCurrentTime(0);
+        setIsTransitioning(false);
+      }, 300);
     }
   };
   const prevClip = () => {
     if (currentClipIndex > 0) {
-      setCurrentClipIndex(prev => prev - 1);
-      setCurrentTime(0);
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentClipIndex(prev => prev - 1);
+        setCurrentTime(0);
+        setIsTransitioning(false);
+      }, 300);
     }
   };
 
@@ -387,38 +416,44 @@ export default function App() {
             )}
 
             {currentClip && currentClip.type === 'docSpot' && (
-              <DocSpot
-                key={`${activeProject}-${currentClipIndex}`}
-                clip={currentClip}
-                currentTime={currentTime}
-                projectId={activeProject}
-                clipIndex={currentClipIndex}
-                duration={clipDuration}
-                isPortrait={isPortrait}
-              />
+              <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                <DocSpot
+                  key={`${activeProject}-${currentClipIndex}`}
+                  clip={currentClip}
+                  currentTime={currentTime}
+                  projectId={activeProject}
+                  clipIndex={currentClipIndex}
+                  duration={clipDuration}
+                  isPortrait={isPortrait}
+                />
+              </div>
             )}
 
             {currentClip && currentClip.type === 'tweet' && (
-              <Tweet
-                key={`${activeProject}-${currentClipIndex}`}
-                clip={currentClip}
-                currentTime={currentTime}
-                projectId={activeProject}
-                clipIndex={currentClipIndex}
-                duration={clipDuration}
-                isPortrait={isPortrait}
-              />
+              <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                <Tweet
+                  key={`${activeProject}-${currentClipIndex}`}
+                  clip={currentClip}
+                  currentTime={currentTime}
+                  projectId={activeProject}
+                  clipIndex={currentClipIndex}
+                  duration={clipDuration}
+                  isPortrait={isPortrait}
+                />
+              </div>
             )}
 
             {currentClip && (currentClip.type === 'footagesAroundTitle' || currentClip.type === 'footagesFullScreen') && (
-              <FootageClip
-                key={`${activeProject}-${currentClipIndex}`}
-                clip={currentClip}
-                currentTime={currentTime}
-                projectId={activeProject}
-                clipIndex={currentClipIndex}
-                duration={clipDuration}
-              />
+              <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+                <FootageClip
+                  key={`${activeProject}-${currentClipIndex}`}
+                  clip={currentClip}
+                  currentTime={currentTime}
+                  projectId={activeProject}
+                  clipIndex={currentClipIndex}
+                  duration={clipDuration}
+                />
+              </div>
             )}
 
             {isGenerating && (
