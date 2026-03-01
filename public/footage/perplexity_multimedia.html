@@ -73,18 +73,15 @@
             }, 300);
         }, 1200);
 
+        // Simplified - removed entrance animation conflicts
         setTimeout(() => {
-            // Trigger screen entrance animation via CSS transition
-            document.body.classList.add('camera-visible');
-            setTimeout(() => {
-                modelCode.style.opacity = '1';
-                modelCode.style.transform = 'translateX(0)';
+            modelCode.style.opacity = '1';
+            modelCode.style.transform = 'translateX(0)';
 
-                setTimeout(() => {
-                    slack.style.transform = 'translateX(0)';
-                }, 1000);
-            }, 800);
-        }, 100);
+            setTimeout(() => {
+                slack.style.transform = 'translateX(0)';
+            }, 1000);
+        }, 300);
     </script>
 </body>
 

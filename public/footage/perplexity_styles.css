@@ -220,15 +220,10 @@ body.camera-down .search-section {
     flex-direction: column;
     gap: 40px;
     position: relative;
-    opacity: 0;
-    transform: translateY(100px) scale(0.95);
-    transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Removed entrance animation - handled by parent transition system */
 }
 
-body.camera-visible .screen-complex {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-}
+/* Removed body.camera-visible .screen-complex rule */
 
 .screen-complex::before {
     content: '';
@@ -373,15 +368,10 @@ body.camera-visible .screen-complex {
     gap: 40px;
     position: relative;
     overflow: hidden;
-    opacity: 0;
-    transform: translateY(100px) scale(0.95);
-    transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Removed entrance animation - handled by parent transition system */
 }
 
-body.camera-visible .screen-multi {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-}
+/* Removed body.camera-visible .screen-multi rule */
 
 .instruction {
     font-size: 38px;
@@ -578,15 +568,10 @@ body.camera-visible .screen-multi {
     flex-direction: column;
     align-items: center;
     gap: 20px;
-    opacity: 0;
-    transform: translateY(100px) scale(0.95);
-    transition: all 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+    /* Removed entrance animation - handled by parent transition system */
 }
 
-body.camera-visible .final-content {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-}
+/* Removed body.camera-visible .final-content rule */
 
 .final-text {
     font-family: 'Playfair Display', serif;

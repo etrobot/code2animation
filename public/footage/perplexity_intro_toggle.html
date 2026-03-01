@@ -24,7 +24,7 @@
         const searchTitle = document.getElementById('search-title');
         const toggleBtn = document.getElementById('toggle-btn');
 
-        // Immediately trigger the search section transitions since we're already "camera-down"
+        // Simplified - removed camera movement conflicts
         setTimeout(() => {
             searchTitle.style.opacity = '1';
             searchTitle.style.transform = 'translateY(0)';
@@ -38,7 +38,7 @@
                     toggleBtn.classList.add('active');
                 }, 800);
             }, 400);
-        }, 500);
+        }, 200);
     </script>
 </body>
 

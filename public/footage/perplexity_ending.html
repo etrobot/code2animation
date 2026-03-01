@@ -71,20 +71,18 @@
             }
         }
 
+        // Simplified - removed entrance animation conflicts
         setTimeout(() => {
-            document.body.classList.add('camera-visible');
+            createExplosion();
+
             setTimeout(() => {
-                createExplosion();
+                logo.style.opacity = '1';
+                logo.style.transform = 'scale(1)';
 
-                setTimeout(() => {
-                    logo.style.opacity = '1';
-                    logo.style.transform = 'scale(1)';
-
-                    finalText.style.opacity = '1';
-                    finalText.style.transform = 'scale(1) translateY(0)';
-                }, 1800);
-            }, 800);
-        }, 100);
+                finalText.style.opacity = '1';
+                finalText.style.transform = 'scale(1) translateY(0)';
+            }, 1800);
+        }, 300);
     </script>
 </body>
 

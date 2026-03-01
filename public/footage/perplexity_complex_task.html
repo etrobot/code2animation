@@ -69,41 +69,37 @@
             }
         }
 
+        // Simplified - removed entrance animation conflicts
         setTimeout(() => {
-            // Trigger screen entrance animation via CSS transition
-            document.body.classList.add('camera-visible');
+            streamText(promptText, 0, () => {
+                setTimeout(() => {
+                    headerEl.style.opacity = '1';
+                    headerEl.style.transform = 'translateX(0)';
 
-            setTimeout(() => {
-                streamText(promptText, 0, () => {
+                    taskItems.forEach((item, idx) => {
+                        setTimeout(() => {
+                            item.classList.add('visible');
+                            item.classList.add('active');
+                        }, (idx + 1) * 700);
+                    });
+
                     setTimeout(() => {
-                        headerEl.style.opacity = '1';
-                        headerEl.style.transform = 'translateX(0)';
-
-                        taskItems.forEach((item, idx) => {
-                            setTimeout(() => {
-                                item.classList.add('visible');
-                                item.classList.add('active');
-                            }, (idx + 1) * 700);
-                        });
+                        document.querySelector('.spinner').style.display = 'none';
+                        headerEl.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Plan Completed</span>';
+                        headerEl.style.background = 'rgba(16, 185, 129, 0.2)';
 
                         setTimeout(() => {
-                            document.querySelector('.spinner').style.display = 'none';
-                            headerEl.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Plan Completed</span>';
-                            headerEl.style.background = 'rgba(16, 185, 129, 0.2)';
-
+                            document.getElementById('tasks').style.display = 'none';
+                            resultEl.style.display = 'block';
                             setTimeout(() => {
-                                document.getElementById('tasks').style.display = 'none';
-                                resultEl.style.display = 'block';
-                                setTimeout(() => {
-                                    resultEl.style.opacity = '1';
-                                    resultEl.style.transform = 'translateY(0)';
-                                }, 50);
-                            }, 500);
-                        }, 3500);
-                    }, 400);
-                });
-            }, 800); // Wait for camera slide in before starting stream
-        }, 100);
+                                resultEl.style.opacity = '1';
+                                resultEl.style.transform = 'translateY(0)';
+                            }, 50);
+                        }, 500);
+                    }, 3500);
+                }, 400);
+            });
+        }, 300);
     </script>
 </body>
 
