@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perplexity Multimedia</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./perplexity_styles.css" />
+</head>
+
+<body>
+    <div class="ambient-glow-large"></div>
+    <div class="screen-multi">
+        <div class="instruction">
+            <b>Extract</b> podcast insights, analyze real estate <br>and <b>stay connected</b> with native integrations.
+        </div>
+
+        <div class="content-grid">
+            <div class="video-container">
+                <div style="width:100%; height:100%; background: linear-gradient(45deg, #1e3a8a, #312e81);"></div>
+                <div class="play-btn">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="white" stroke="none">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </div>
+                <div class="video-overlay" id="subtitle">GROWTH MINDSET</div>
+            </div>
+
+            <div class="data-panel">
+                <div class="model-view" id="model-code">
+                    <div>{</div>
+                    <div>&nbsp;&nbsp;<span class="code-key">"location"</span>: <span class="code-string">"Albuquerque,
+                            NM"</span>,</div>
+                    <div>&nbsp;&nbsp;<span class="code-key">"estimate"</span>: <span
+                            class="code-string">"$450,000"</span>,</div>
+                    <div>&nbsp;&nbsp;<span class="code-key">"ROI_projection"</span>: <span class="code-string">"12% over
+                            3 years"</span>,</div>
+                    <div>&nbsp;&nbsp;<span class="code-key">"risk_factors"</span>: [</div>
+                    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-string">"High profile"</span>,</div>
+                    <div>&nbsp;&nbsp;&nbsp;&nbsp;<span class="code-string">"Historical significance"</span></div>
+                    <div>&nbsp;&nbsp;]</div>
+                    <div>}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="slack-notification" id="slack">
+            <div class="slack-icon"></div>
+            <div class="slack-content">
+                <div class="slack-header">
+                    <div class="slack-title">Slack • #investments</div>
+                    <div class="slack-time">Just now</div>
+                </div>
+                <div class="slack-text"><b>AgentSaaS:</b> Analysis complete. Report uploaded. 🚀</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const slack = document.getElementById('slack');
+        const modelCode = document.getElementById('model-code');
+        const subtitle = document.getElementById('subtitle');
+
+        const subtitles = ["GROWTH MINDSET", "NEVER STOP", "LEARN DAILY", "SCALE FAST"];
+        let subIdx = 0;
+        setInterval(() => {
+            subtitle.style.opacity = '0';
+            setTimeout(() => {
+                subIdx = (subIdx + 1) % subtitles.length;
+                subtitle.innerText = subtitles[subIdx];
+                subtitle.style.opacity = '1';
+            }, 300);
+        }, 1200);
+
+        setTimeout(() => {
+            // Trigger screen entrance animation via CSS transition
+            document.body.classList.add('camera-visible');
+            setTimeout(() => {
+                modelCode.style.opacity = '1';
+                modelCode.style.transform = 'translateX(0)';
+
+                setTimeout(() => {
+                    slack.style.transform = 'translateX(0)';
+                }, 1000);
+            }, 800);
+        }, 100);
+    </script>
+</body>
+
+</html>

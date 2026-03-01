@@ -1,9 +1,12 @@
-export type ClipType = 'footagesAroundTitle' | 'footagesFullScreen' | 'docSpot' | 'tweet';
+export type ClipType = 'footagesAroundTitle' | 'footagesFullScreen' | 'docSpot' | 'tweet' | 'transition';
 
 export interface MediaItem {
-  src: string;
-  words: string[]; // The words in the title/speech that trigger this media
-  type?: 'video' | 'image' | 'html' | 'doc'; // Optional type for rendering
+  src?: string; // Optional for transition items
+  words?: string[]; // The words in the title/speech that trigger this media
+  type?: 'video' | 'image' | 'html' | 'doc' | 'transition'; // Add transition type
+  // Transition-specific properties (only when type === 'transition')
+  transitionType?: 'fade' | 'slideUp' | 'slideRight' | 'zoomIn';
+  duration?: number; // Transition duration in seconds
 }
 
 export interface DocItem {
@@ -33,8 +36,16 @@ export interface VideoClip {
   docSrc?: string; // Document source path for docSpot clips
   docSegments?: DocSpotSegment[]; // For multi-segment docSpot clips
   tweet?: TweetItem; // For tweet clips
+  // Transition-specific properties (only when type === 'transition')
+  transitionType?: 'fade' | 'slideUp' | 'slideRight' | 'zoomIn' | 'crossFade';
   // TTS overrides
   voice?: string;
+  duration?: number;
+}
+
+export interface ClipTransition {
+  type: 'fade' | 'slideUp' | 'slideRight' | 'zoomIn' | 'crossFade';
+  duration?: number; // Transition duration in seconds, default 0.5
 }
 
 export interface AudioAlignment {
@@ -45,6 +56,6 @@ export interface AudioAlignment {
 
 export interface Project {
   name: string;
-  clips: VideoClip[];
+  clips: VideoClip[]; // Now includes transition clips mixed with content clips
   background?: string;
 }

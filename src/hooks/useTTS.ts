@@ -150,12 +150,14 @@ export function useTTS({ clip, projectId, clipIndex, onWordBoundary, onEnd }: Us
   // Sync mode (for App.tsx)
   useEffect(() => {
     if (clip && projectId && clipIndex !== undefined) {
+      // RESET STATE IMMEDIATELY when clip changes
+      setAlignment(null);
+      setDuration(0);
+      setAudio(null);
+
       const combinedSpeech = getCombinedSpeech(clip);
       if (!combinedSpeech.trim()) {
         stop();
-        setAlignment(null);
-        setDuration(0);
-        setAudio(null);
       } else {
         loadResource(projectId, clipIndex, combinedSpeech, {
           voice: clip.voice

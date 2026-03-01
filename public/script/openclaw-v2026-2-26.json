@@ -6,6 +6,21 @@
       "fps": 30,
       "clips": [
         {
+          "type": "footagesFullScreen",
+          "duration": 1,
+          "media": [
+            {
+              "src": "/footage/portrait_cover.html",
+              "words": []
+            }
+          ]
+        },
+        {
+          "type": "transition",
+          "transitionType": "slideUp",
+          "duration": 0.8
+        },
+        {
           "type": "tweet",
           "duration": 4,
           "speech": "重磅！OpenClaw v2026 测试版来了，带来外部密钥管理和线程绑定代理！",
@@ -15,6 +30,11 @@
             "handle": "@steipete",
             "content": "New @openclaw beta bits are up! \nExternal Secrets Management (openclaw secrets), CP thread-bound agents (first-class runtime), web socket support for codex and loads more!"
           }
+        },
+        {
+          "type": "transition",
+          "transitionType": "zoomIn",
+          "duration": 1.0
         },
         {
           "type": "docSpot",
@@ -57,16 +77,6 @@
               "speech": "还修复了 Telegram、Google Chat、Teams 等平台的大量问题，体验更流畅！",
               "startWith": "Fixes & Improvements"
             }
-          ]
-        },
-        {
-          "type": "footagesFullScreen",
-          "title": "你最期待\n哪个功能？",
-          "speech": "你最期待哪个功能？评论区告诉我！别忘了点赞关注，咱们下期见！",
-          "media": [
-            { "src": "/footage/chatbot.html", "words": ["评论"] },
-            { "src": "/footage/future_portal.html", "words": ["期待"] },
-            { "src": "/footage/neural_ai.html", "words": ["功能"] }
           ]
         }
       ]

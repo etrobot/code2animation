@@ -5,10 +5,10 @@
         "Type": "WordBoundary",
         "Data": {
           "Offset": 1000000,
-          "Duration": 11000000,
+          "Duration": 6875000,
           "text": {
-            "Text": "Code2Animation",
-            "Length": 14,
+            "Text": "Introducing",
+            "Length": 11,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -20,10 +20,106 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 12250000,
+          "Offset": 8125000,
           "Duration": 1250000,
           "text": {
-            "Text": "is",
+            "Text": "the",
+            "Length": 3,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 9625000,
+          "Duration": 10250000,
+          "text": {
+            "Text": "AgentSaaS",
+            "Length": 9,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 20000000,
+          "Duration": 6000000,
+          "text": {
+            "Text": "computer",
+            "Length": 8,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 34875000,
+          "Duration": 1125000,
+          "text": {
+            "Text": "A",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 36125000,
+          "Duration": 1750000,
+          "text": {
+            "Text": "new",
+            "Length": 3,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 38125000,
+          "Duration": 1500000,
+          "text": {
+            "Text": "way",
+            "Length": 3,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 39750000,
+          "Duration": 1000000,
+          "text": {
+            "Text": "to",
             "Length": 2,
             "BoundaryType": "WordBoundary"
           }
@@ -36,11 +132,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 13625000,
-          "Duration": 4375000,
+          "Offset": 41000000,
+          "Duration": 4625000,
           "text": {
-            "Text": "finally",
-            "Length": 7,
+            "Text": "interact",
+            "Length": 8,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -52,10 +148,10 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 18250000,
-          "Duration": 3750000,
+          "Offset": 45750000,
+          "Duration": 1125000,
           "text": {
-            "Text": "here",
+            "Text": "with",
             "Length": 4,
             "BoundaryType": "WordBoundary"
           }
@@ -68,23 +164,7 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 30750000,
-          "Duration": 6875000,
-          "text": {
-            "Text": "Transforming",
-            "Length": 12,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 37875000,
+          "Offset": 47125000,
           "Duration": 1250000,
           "text": {
             "Text": "your",
@@ -100,43 +180,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 39250000,
-          "Duration": 3875000,
+          "Offset": 48500000,
+          "Duration": 3500000,
           "text": {
-            "Text": "scripts",
-            "Length": 7,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 43375000,
-          "Duration": 2125000,
-          "text": {
-            "Text": "into",
+            "Text": "data",
             "Length": 4,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 45750000,
-          "Duration": 6125000,
-          "text": {
-            "Text": "cinematic",
-            "Length": 9,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -149,10 +197,10 @@
         "Type": "WordBoundary",
         "Data": {
           "Offset": 52125000,
-          "Duration": 4875000,
+          "Duration": 1250000,
           "text": {
-            "Text": "visuals",
-            "Length": 7,
+            "Text": "and",
+            "Length": 3,
             "BoundaryType": "WordBoundary"
           }
         }
@@ -164,43 +212,11 @@
       {
         "Type": "WordBoundary",
         "Data": {
-          "Offset": 57250000,
-          "Duration": 1750000,
+          "Offset": 53625000,
+          "Duration": 6750000,
           "text": {
-            "Text": "with",
-            "Length": 4,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 59250000,
-          "Duration": 2625000,
-          "text": {
-            "Text": "pure",
-            "Length": 4,
-            "BoundaryType": "WordBoundary"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "Metadata": [
-      {
-        "Type": "WordBoundary",
-        "Data": {
-          "Offset": 62000000,
-          "Duration": 5625000,
-          "text": {
-            "Text": "control",
-            "Length": 7,
+            "Text": "workflows",
+            "Length": 9,
             "BoundaryType": "WordBoundary"
           }
         }

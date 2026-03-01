@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perplexity Intro - Toggle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./perplexity_styles.css" />
+</head>
+
+<body class="camera-down">
+    <div class="ambient-glow-intro"></div>
+
+    <div class="search-section">
+        <div id="search-title" class="search-title">How can I help you today?</div>
+        <div id="search-box" class="search-box">
+            <div id="toggle-btn">Search</div>
+        </div>
+    </div>
+
+    <script>
+        const searchBox = document.getElementById('search-box');
+        const searchTitle = document.getElementById('search-title');
+        const toggleBtn = document.getElementById('toggle-btn');
+
+        // Immediately trigger the search section transitions since we're already "camera-down"
+        setTimeout(() => {
+            searchTitle.style.opacity = '1';
+            searchTitle.style.transform = 'translateY(0)';
+
+            setTimeout(() => {
+                searchBox.style.opacity = '1';
+                searchBox.style.transform = 'translateY(0) scale(1)';
+
+                setTimeout(() => {
+                    toggleBtn.innerText = "Computer";
+                    toggleBtn.classList.add('active');
+                }, 800);
+            }, 400);
+        }, 500);
+    </script>
+</body>
+
+</html>

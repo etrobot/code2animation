@@ -21,7 +21,7 @@ interface ParsedSection {
     containsWords: boolean;
 }
 
-export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipIndex, isPortrait = false }) => {
+export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipIndex, duration, isPortrait = false }) => {
     const [docContent, setDocContent] = useState<string>('');
     const [sections, setSections] = useState<ParsedSection[]>([]);
     const [alignment, setAlignment] = useState<AudioAlignment | null>(null);
@@ -97,7 +97,7 @@ export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipInd
                 }
                 const text = await response.text();
                 setDocContent(text);
-                parseMarkdown(text, [currentSegment.startWith]);
+                parseMarkdown(text, currentSegment.startWith);
             } catch (error) {
                 console.error('Failed to load document:', error);
             }
@@ -106,35 +106,32 @@ export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipInd
     }, [clip.docSrc, clip.docs, currentSegment.startWith]);
 
     // Parse markdown into sections
-    const parseMarkdown = (content: string, words: string[]) => {
+    const parseMarkdown = (content: string, targetPhrase: string) => {
         const lines = content.split('\n');
         const parsedSections: ParsedSection[] = [];
         let currentSection: ParsedSection | null = null;
         let index = 0;
 
-        const containsAnyWord = (text: string, words: string[]) => {
+        const containsPhrase = (text: string, phrase: string) => {
+            if (!phrase) return false;
             const lowerText = text.toLowerCase();
-            return words.some(word => {
-                const lowerWord = word.toLowerCase();
-                // First try exact match (most precise)
-                if (lowerText.includes(lowerWord)) return true;
+            const lowerPhrase = phrase.toLowerCase();
 
-                // Then try matching significant words (length > 3)
-                const wordParts = lowerWord.split(/\s+/).filter(part => part.length > 3);
-                if (wordParts.length > 0) {
-                    // Require at least 2 significant words to match, or 1 if it's very specific
-                    const matches = wordParts.filter(part => lowerText.includes(part));
-                    return matches.length >= Math.min(2, wordParts.length);
-                }
+            // Try exact match
+            if (lowerText.includes(lowerPhrase)) return true;
 
-                return false;
-            });
+            // Try matching significant parts (split by space and match at least 2 words if possible)
+            const phraseParts = lowerPhrase.split(/\s+/).filter(part => part.length > 3);
+            if (phraseParts.length > 0) {
+                const matches = phraseParts.filter(part => lowerText.includes(part));
+                return matches.length >= Math.min(2, phraseParts.length);
+            }
+            return false;
         };
 
         lines.forEach((line) => {
             if (line.startsWith('#')) {
                 if (currentSection) {
-                    // Render markdown content to HTML
                     const htmlContent = DOMPurify.sanitize(marked.parse(currentSection.content) as string);
                     currentSection.htmlContent = htmlContent;
                     parsedSections.push(currentSection);
@@ -145,11 +142,11 @@ export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipInd
                     content: '',
                     htmlContent: '',
                     startIndex: index,
-                    containsWords: containsAnyWord(title, words)
+                    containsWords: containsPhrase(title, targetPhrase)
                 };
             } else if (currentSection) {
                 currentSection.content += line + '\n';
-                if (containsAnyWord(line, words)) {
+                if (containsPhrase(line, targetPhrase)) {
                     currentSection.containsWords = true;
                 }
             }
@@ -162,11 +159,7 @@ export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipInd
             parsedSections.push(currentSection);
         }
 
-        const matchingSections = parsedSections.filter(s => s.containsWords);
-        console.log(`[DocSpot] Parsed ${parsedSections.length} sections, ${matchingSections.length} contain target words`);
-        console.log(`[DocSpot] Target words: ${words.join(', ')}`);
-        console.log(`[DocSpot] Matching sections: ${matchingSections.map(s => s.title).join(', ')}`);
-
+        console.log(`[DocSpot] Parsed ${parsedSections.length} sections for phrase: "${targetPhrase}"`);
         setSections(parsedSections);
         sectionRefs.current = new Array(parsedSections.length);
     };
@@ -175,20 +168,23 @@ export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipInd
     useEffect(() => {
         if (!clip.docSegments || clip.docSegments.length <= 1) return;
 
-        if (alignment && alignment.character_start_times_seconds && alignment.characters) {
-            // Find which segment's speech content we're currently speaking
+        if (alignment && (alignment as any).character_start_times_seconds) {
+            const { character_start_times_seconds, characters } = alignment as any;
+
+            // Find which character index we're currently at
             let charIndex = 0;
-            for (let i = 0; i < alignment.character_start_times_seconds.length; i++) {
-                if (alignment.character_start_times_seconds[i] <= currentTime) {
+            for (let i = 0; i < character_start_times_seconds.length; i++) {
+                if (character_start_times_seconds[i] <= currentTime) {
                     charIndex = i;
                 } else {
                     break;
                 }
             }
 
-            const spokenText = alignment.characters.slice(0, charIndex + 1).join('');
+            const spokenText = characters.slice(0, charIndex + 1).join('');
+            const spokenClean = spokenText.replace(/\s+/g, '');
 
-            // Find which segment contains the currently spoken text
+            // Find which segment we belong to
             let newSegmentIndex = 0;
             let accumulatedText = '';
 
@@ -196,25 +192,27 @@ export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipInd
                 const segment = clip.docSegments[i];
                 if (!segment || !segment.speech) continue;
 
-                const segmentText = segment.speech;
-                const nextAccumulated = accumulatedText + (i > 0 ? ' ' : '') + segmentText;
+                accumulatedText += segment.speech;
+                const accumulatedClean = accumulatedText.replace(/\s+/g, '');
 
-                if (spokenText.length <= nextAccumulated.length) {
+                if (spokenClean.length <= accumulatedClean.length) {
                     newSegmentIndex = i;
                     break;
                 }
-                accumulatedText = nextAccumulated;
+                // If we're at the end, default to the last segment
+                newSegmentIndex = i;
             }
 
             if (newSegmentIndex !== currentSegmentIndex) {
                 setCurrentSegmentIndex(newSegmentIndex);
             }
         } else {
-            // Without alignment, use time-based progression
-            const totalDuration = 30; // Assuming 30 seconds total duration
-            const segmentDuration = totalDuration / clip.docSegments.length;
+            // Fallback: estimate based on duration prop
+            const totalDuration = duration || 30;
+            const segmentShare = 1 / clip.docSegments.length;
+            const progress = totalDuration > 0 ? currentTime / totalDuration : 0;
             const newSegmentIndex = Math.min(
-                Math.floor(currentTime / segmentDuration),
+                Math.floor(progress / segmentShare),
                 clip.docSegments.length - 1
             );
 
@@ -222,83 +220,68 @@ export const DocSpot: React.FC<Props> = ({ clip, currentTime, projectId, clipInd
                 setCurrentSegmentIndex(newSegmentIndex);
             }
         }
-    }, [currentTime, alignment, clip.docSegments, currentSegmentIndex]);
+    }, [currentTime, alignment, clip.docSegments, currentSegmentIndex, clip.duration]);
 
     // Update sections when segment changes
     useEffect(() => {
         if (docContent && currentSegment.startWith) {
-            console.log(`[DocSpot] Updating sections for segment ${currentSegmentIndex}: "${currentSegment.startWith}"`);
-            parseMarkdown(docContent, [currentSegment.startWith]);
-        } else {
-            console.log(`[DocSpot] Skipping section update - docContent: ${!!docContent}, startWith: "${currentSegment.startWith}"`);
+            parseMarkdown(docContent, currentSegment.startWith);
         }
     }, [docContent, currentSegment.startWith, currentSegmentIndex]);
 
-    // Scroll to section containing the word based on speech progress
+    // Scroll and Highlight controller
     useEffect(() => {
-        if (sections.length === 0) return;
+        if (sections.length === 0 || !containerRef.current) return;
 
-        let targetSection = -1;
+        // Find the correct section to show
+        let targetIdx = sections.findIndex(s => s.containsWords);
 
-        // Always try to find the section that contains the current segment's startWith phrase
-        if (currentSegment.startWith) {
-            targetSection = sections.findIndex((s: ParsedSection) => s.containsWords);
-
-            // If not found by containsWords, try to find by partial text match
-            if (targetSection === -1) {
-                targetSection = sections.findIndex((s: ParsedSection) => {
-                    const searchText = currentSegment.startWith.toLowerCase();
-                    return s.title.toLowerCase().includes(searchText) ||
-                        s.content.toLowerCase().includes(searchText);
-                });
-            }
+        // Fallback to title/content search if not tagged by parseMarkdown
+        if (targetIdx === -1 && currentSegment.startWith) {
+            const search = currentSegment.startWith.toLowerCase();
+            targetIdx = sections.findIndex(s =>
+                s.title.toLowerCase().includes(search) ||
+                s.content.toLowerCase().includes(search)
+            );
         }
 
-        // If we still haven't found a target, default to the first section
-        if (targetSection === -1 && sections.length > 0) {
-            targetSection = 0;
-        }
+        // Final fallback
+        if (targetIdx === -1) targetIdx = 0;
 
-        if (targetSection !== -1 && targetSection !== activeSectionIndex) {
-            setActiveSectionIndex(targetSection);
-            const targetElement = sectionRefs.current[targetSection];
+        if (targetIdx !== -1) {
+            setActiveSectionIndex(targetIdx);
+
             const container = containerRef.current;
+            const element = sectionRefs.current[targetIdx];
 
-            if (targetElement && container) {
-                // Calculate position to center the element
-                const relativeTop = targetElement.offsetTop;
-                const targetScrollTop = relativeTop - (container.clientHeight / 2) + (targetElement.clientHeight / 2);
+            if (container && element && container.clientHeight > 0) {
+                const targetScroll = Math.max(0, element.offsetTop - (container.clientHeight / 2) + (element.clientHeight / 2));
 
-                // Custom smooth scroll using requestAnimationFrame for render compatibility
-                const startPos = container.scrollTop;
-                const endPos = Math.max(0, targetScrollTop);
-                const distance = endPos - startPos;
-                const durationMs = 800; // 0.8s for smooth slide
+                // Only animate if far enough away
+                if (Math.abs(container.scrollTop - targetScroll) < 10) return;
 
+                const startScroll = container.scrollTop;
+                const distance = targetScroll - startScroll;
+                const duration = 800;
                 let startTime: number | null = null;
 
-                const easeInOutCubic = (t: number) => {
-                    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-                };
+                const ease = (t: number) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
-                const animateScroll = () => {
-                    const currentTimestamp = performance.now();
-                    if (!startTime) startTime = currentTimestamp;
-                    const elapsed = currentTimestamp - startTime;
+                const step = (now: number) => {
+                    if (!startTime) startTime = now;
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
 
-                    if (elapsed < durationMs && distance !== 0) {
-                        const progress = easeInOutCubic(elapsed / durationMs);
-                        container.scrollTop = startPos + distance * progress;
-                        requestAnimationFrame(animateScroll);
-                    } else {
-                        container.scrollTop = endPos;
+                    container.scrollTop = startScroll + distance * ease(progress);
+
+                    if (progress < 1) {
+                        requestAnimationFrame(step);
                     }
                 };
-
-                requestAnimationFrame(animateScroll);
+                requestAnimationFrame(step);
             }
         }
-    }, [currentSegmentIndex, sections, currentSegment.startWith, activeSectionIndex]);
+    }, [sections, currentSegmentIndex, currentSegment.startWith]);
 
     // Highlight text containing any of the words in HTML
     const highlightHtml = (html: string) => {

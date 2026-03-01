@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portrait Cover</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: transparent; /* Changed to transparent */
+            color: #f3f4f6; /* Default white, but will be overridden by gradient */
+            font-family: 'Inter', sans-serif; /* Consistent font */
+            text-align: center;
+            overflow: hidden; /* Prevent scrollbars from large text */
+        }
+        .text-line {
+            font-size: 6rem; /* Much larger */
+            font-weight: 900; /* Use black for impact */
+            line-height: 1.1;
+            margin-bottom: 0.5rem;
+            /* Text effects */
+            background: linear-gradient(135deg, #064e3b 0%, #10b981 100%); /* Green gradient */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            mix-blend-mode: difference; /* For effect */
+            filter: drop-shadow(0 10px 30px rgba(0,0,0,0.5)); /* Shadow */
+            text-transform: uppercase;
+            letter-spacing: -0.03em;
+            white-space: nowrap; /* Prevent line breaks */
+        }
+        .subtitle {
+            font-size: 2.5rem; /* Larger */
+            font-weight: 700;
+            opacity: 0.9;
+            /* Text effects - a slightly different gradient for contrast */
+            background: linear-gradient(135deg, #f3f4f6 0%, #d1d5db 100%); /* Light gradient */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 5px 15px rgba(0,0,0,0.3));
+            white-space: nowrap; /* Prevent line breaks */
+        }
+    </style>
+</head>
+<body>
+    <div class="text-line">Finally</div>
+    <div class="text-line">OpenClaw Update</div>
+    <div class="subtitle">The Secret Module</div>
+</body>
+</html>

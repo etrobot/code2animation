@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perplexity Intro - Text</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./perplexity_styles.css" />
+</head>
+<body class="camera-down">
+    <div class="ambient-glow-intro"></div>
+
+    <div class="search-section">
+        <div id="introducing" class="introducing">Introducing</div>
+        <div class="brand">
+            <span id="brand-text"></span>
+            <span id="cursor" class="cursor"></span>
+        </div>
+    </div>
+
+    <script>
+        const brandName = "AgentSaaS Computer";
+        const brandEl = document.getElementById('brand-text');
+        const introEl = document.getElementById('introducing');
+        const cursor = document.getElementById('cursor');
+        const searchSection = document.querySelector('.search-section');
+
+        function typeWriter(text, i, cb) {
+            if (i < text.length) {
+                brandEl.innerHTML += text.charAt(i);
+                setTimeout(() => typeWriter(text, i + 1, cb), 60);
+            } else if (cb) {
+                cb();
+            }
+        }
+        
+        // This is needed to bring the search-section into view
+        if (document.body.classList.contains('camera-down')) {
+            setTimeout(() => {
+                if(searchSection) {
+                    // This will trigger the transition defined in the CSS
+                    searchSection.style.transform = 'translateY(-100%)';
+                }
+            }, 100);
+        }
+
+        setTimeout(() => {
+            introEl.style.opacity = '1';
+            introEl.style.transform = 'translateY(0)';
+            introEl.style.letterSpacing = '0.4em';
+        }, 500);
+
+        setTimeout(() => {
+            typeWriter(brandName, 0, () => {
+                setTimeout(() => {
+                    if (cursor) {
+                        cursor.style.display = 'none';
+                    }
+                }, 800);
+            });
+        }, 1200);
+    </script>
+</body>
+</html>

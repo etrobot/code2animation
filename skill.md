@@ -5,512 +5,66 @@ description: End-to-end video production skill using the code2animation framewor
 
 # Code2Animation Skill
 
-You are an end-to-end video production assistant for the [code2animation](https://github.com/etrobot/code2animation) project. Given a topic or brief, you handle the full pipeline:
-
-1. **Write the video script** — author a structured `VideoClip[]` array
-2. **Generate TTS audio** — run `generate-audio.ts` to synthesize narration
-3. **Create HTML/React visual assets** — produce custom footage files if needed
-4. **Render the final video** — run `render.js` to output an MP4
-
----
-
 ## Prerequisites
 
-Confirm these are available before starting:
-
 - Node.js >= 18
-- pnpm >= 10.14.0 (install via `npm install -g pnpm` or see https://pnpm.io/installation)
-- FFmpeg installed and on PATH
-- Chrome/Chromium/Brave available (or `PUPPETEER_EXECUTABLE_PATH` set)
-- code2animation repo cloned and `pnpm install` completed
-- Dev server running: `pnpm dev` (default: http://localhost:3000)
+- pnpm >= 10.14.0 (`npm install -g pnpm`)
+- FFmpeg (`brew install ffmpeg`)
+- Chrome/Chromium/Brave
+- Complete `pnpm install`
+- Start dev server: `pnpm dev`
 
----
+## Core Workflow
 
-## Pipeline Overview
+1. **Write Script** → `public/script/<name>.json`
+2. **Generate Audio** → `pnpm tsx scripts/generate-audio.ts <name>`
+3. **Prepare Assets** → `public/footage/*.html` or media files
+4. **Render Video** → `node scripts/render.js <projectId> --script <name> --portrait`
 
-```
-[User Brief]
-     │
-     ▼
-① Write Script (public/script/<name>.js)
-     │
-     ▼
-② Generate TTS Audio (pnpm tsx scripts/generate-audio.ts <name>)
-     │
-     ▼
-③ Create Visual Assets (public/footage/*.html or media files)
-     │
-     ▼
-④ Render Video (node scripts/render.js <projectId> --script <name>)
-     │
-     ▼
-[Output: public/video/render-<projectId>.mp4]
-```
+## Four Component Types
 
----
+| Type | Purpose |
+|------|---------|
+| `tweet` | Twitter-style display for social content and opinions |
+| `docSpot` | Document display with keyword highlighting and scroll positioning |
+| `footagesFullScreen` | Fullscreen media playback with speech keywords |
+| `footagesAroundTitle` | Centered title with media clips appearing around it |
 
-## Step 1 — Write the Script
+## Custom Assets
 
-### File location
-
-```
-public/script/<scriptName>.json
-```
-
-### Script format
-
-```json
-// public/script/myVideo.json
-{
-  "projects": {
-    "myVideo": {
-      "name": "My Video",
-      "background":"/footage/background.html",
-      "clips": [
-        {
-          "type": "tweet",
-          "speech": "This viral tweet perfectly captures the current AI sentiment",
-          "tweet": {
-            "avatar": "/images/user-avatar.jpg",
-            "name": "Tech Innovator",
-            "handle": "@techinnovator",
-            "content": "AI is not just changing how we code, it's revolutionizing how we think about problem-solving. The future is here! 🚀 #AI #TechRevolution"
-          }
-        },
-        {
-          "type": "docSpot",
-          "speech": "Let's explore the future of artificial intelligence",
-          "docs": [
-            { "src": "/doc/ai-guide.md", "word": "future" }
-          ]
-        },
-        {
-          "type": "footagesAroundTitle",
-          "title": "CODE\n2\nANIMATION",
-          "speech": "Code2Animation is finally here. Transforming your scripts into cinematic visuals with pure control.",
-          "media": [
-            { "src": "/footage/chatbot.html", "word": "Code" },
-            { "src": "/footage/chatbot.html", "word": "Animation" },
-            { "src": "/footage/chatbot.html", "word": "cinematic" }
-          ]
-        },
-        {
-          "type": "footagesFullScreen",
-          "title": "PURE\nCONTROL",
-          "speech": "Absolute control over every pixel, every transition, and every word.",
-          "media": [
-            { "src": "/footage/chatbot.html", "word": "pure" },
-            { "src": "/footage/chatbot.html", "word": "control" },
-            { "src": "/footage/chatbot.html", "word": "pixel" }
-          ]
-        }
-      ]
-    }
-  }
-}
-```
-
-### Clip types
-
-| Type | Visual style |
-|------|-------------|
-| `tweet` | Twitter-style post display with avatar, name, and content |
-| `docSpot` | Markdown document viewer with keyword highlighting and auto-scroll |
-| `footagesAroundTitle` | Title/subtitle centered, media clips around it |
-| `footagesFullScreen` | Media fills entire screen |
-
-### MediaItem fields
-
-```typescript
-interface MediaItem {
-  src?: string;       // path relative to public/ e.g. "footage/demo.mp4"
-  word?: string;      // trigger word for timing synchronization
-}
-
-interface DocItem {
-  src: string;        // path to markdown file e.g. "/doc/guide.md"
-  word: string;       // keyword to highlight and scroll to in the document
-}
-
-interface TweetItem {
-  avatar: string;     // path to avatar image e.g. "/images/avatar.jpg"
-  name: string;       // display name e.g. "John Doe"
-  handle: string;     // Twitter handle e.g. "@johndoe"
-  content: string;    // tweet text content (supports @mentions, #hashtags, links)
-  date?: string;      // optional date string
-}
-```
-
-### Script writing best practices
-
-- Keep each `speech` natural and conversational — it becomes the spoken narration.
-- Match `duration` to speech length: ~130 words/minute as a guide.
-- Use `tweet` clips for viral content, social proof, or engaging video openings.
-- Use `docSpot` for documentation/tutorial content with keyword highlighting.
-- Use `footagesAroundTitle` for intro/transition clips, `footagesFullScreen` for deep-dives.
-- Vary themes across clips for visual interest (`dark` → `neon` → `light`).
-- For code clips, prefer short, illustrative snippets (< 20 lines).
-- Aim for 5–12 clips per video (60–180 seconds total).
-- Use `media.word` fields to synchronize visual elements with spoken words.
-- For Chinese content, ensure `media.word` matches Chinese words in the speech text.
-- For `tweet` clips, use realistic avatars and engaging content with @mentions and #hashtags.
-- For `docSpot` clips, place markdown files in `public/doc/` and use `docs.word` to specify keywords to highlight.
-
----
-
-## Step 2 — Generate TTS Audio
-
-After writing the script, generate all narration audio:
-
-```bash
-pnpm tsx scripts/generate-audio.ts <scriptName>
-```
-
-This reads each clip's `speech` field, synthesizes audio using Microsoft Edge TTS, and writes `.mp3` files to `public/audio/`. It also aligns audio timelines so durations match speech length.
-
-**Voice options** (set per-clip via `voice` field):
-- `en-US-JennyNeural` — friendly female (default)
-- `en-US-GuyNeural` — male
-- `zh-CN-XiaoxiaoNeural` — Mandarin female
-- Browse full list: https://speech.microsoft.com/portal/voicegallery
-
----
-
-## Step 3 — Create Visual Assets
-
-### Option A: Use Tweet for social content
-
-For displaying Twitter-style posts with engaging social proof:
-
-1. **Prepare avatar image** in `public/images/`:
-
-```
-public/images/user-avatar.jpg
-```
-
-2. **Reference in script**:
-
-```json
-{
-  "type": "tweet",
-  "speech": "This viral tweet perfectly captures the current AI sentiment",
-  "tweet": {
-    "avatar": "/images/user-avatar.jpg",
-    "name": "Tech Innovator",
-    "handle": "@techinnovator",
-    "content": "AI is not just changing how we code, it's revolutionizing how we think about problem-solving. The future is here! 🚀 #AI #TechRevolution"
-  }
-}
-```
-
-**Tweet features:**
-- Twitter-style dark mode design with green glow effects
-- Automatic parsing of @mentions, #hashtags, and links (colored blue)
-- Smooth fade-in animation with staggered element appearance
-- Responsive design for both landscape and portrait orientations
-- Transparent background to show animated backgrounds
-
-**Tweet best practices:**
-- Use high-quality avatar images (64x64px minimum)
-- Keep content engaging and realistic (under 280 characters)
-- Include relevant @mentions and #hashtags for authenticity
-- Perfect for video openings to establish context or credibility
-- Use emojis to make content more engaging
-- Combine with animated backgrounds for visual appeal
-
-### Option B: Use DocSpot for documentation
-
-For displaying markdown documentation with keyword highlighting and auto-scroll:
-
-1. **Create markdown file** in `public/doc/`:
-
-```markdown
-<!-- public/doc/ai-guide.md -->
-# Introduction to AI
-
-Artificial Intelligence is transforming the world...
-
-## Machine Learning
-
-Machine learning enables systems to learn from data...
-
-## The Future of AI
-
-The future holds endless possibilities for AI applications...
-```
-
-2. **Reference in script**:
-
-```json
-{
-  "type": "docSpot",
-  "speech": "Let's explore the future of artificial intelligence",
-  "docs": [
-    { "src": "/doc/ai-guide.md", "word": "future" }
-  ]
-}
-```
-
-**DocSpot features:**
-- Renders markdown with full formatting (headings, lists, code blocks, links, etc.)
-- Automatically highlights the specified keyword with glowing green background
-- Scrolls to sections containing the keyword when spoken
-- Supports both English and Chinese text
-- 90% opacity black background to show animated background
-- Responsive design for mobile and desktop
-
-**DocSpot best practices:**
-- Use clear section headings (# ## ###) to organize content
-- Keep keyword simple and unique for accurate highlighting
-- Test markdown rendering by viewing the file directly
-- Use code blocks for technical content
-- Combine with animated backgrounds for visual interest
-
-### Option C: Use existing footage
-
-Place video/image files in `public/footage/` and reference them via `src` in `MediaItem`.
-
-### Option D: Create custom HTML animations
-
-For dynamic visuals, create self-contained HTML files in `public/footage/`:
+### HTML Animation Assets
+Create custom HTML files in `public/footage/`:
 
 ```html
-<!-- public/footage/my-chart.html -->
 <!DOCTYPE html>
 <html>
 <head>
   <style>
-    body { margin: 0; background: #0f0f1a; display: flex;
-           align-items: center; justify-content: center;
+    body { margin: 0; background: #0f0f1a; 
            width: 1920px; height: 1080px; }
-    /* your animation styles */
+    /* Animation styles */
   </style>
 </head>
 <body>
-  <!-- animated SVG, Canvas, or DOM content -->
+  <!-- Animation content -->
   <script>
-    // animation logic — use CSS animations or requestAnimationFrame
+    // Animation logic
   </script>
 </body>
 </html>
 ```
 
-Reference it in the script:
-```js
-{ type: 'video', src: 'footage/my-chart.html' }
-```
+### Script Format
+Reference `public/script/openclaw-v2026-2-26.json`
 
-Puppeteer will render this HTML frame-by-frame during the render step.
-
-### HTML asset guidelines
-
-- Canvas size: **1920×1080px** (hardcode in CSS)
-- Use CSS animations or JS-driven frame updates — both work with Puppeteer
-- No external network calls — bundle everything inline or use `public/` paths
-- Test locally by opening the HTML in a browser first
-- Prefer smooth, loopable animations for background footage
-
-### Option E: Code snippets (inline)
-
-No file needed — pass code directly:
-```js
-media: [{ type: 'code', lang: 'python', content: 'print("hello")' }]
-```
-
----
-
-## Step 4 — Render the Video
-
-### Basic usage
-
+### Common Commands
 ```bash
-# Using pnpm scripts (recommended)
-pnpm run render:video-1      # renders video-1 project
-pnpm run render:video-2      # renders video-2 project
+# Render video (portrait recommended)
+pnpm run render:video-1 --portrait
 
-# Or directly with node
-node scripts/render.js <projectId> --script <scriptName>
-```
+# Generate audio
+pnpm tsx scripts/generate-audio.ts <scriptName>
 
-### Command options
-
-```bash
---script <name>   # specify script file name (default: same as projectId)
---port <number>   # dev server port (default: 5175)
---force-audio     # force regeneration of TTS audio even if files exist
---gpu             # enable GPU acceleration (macOS: h264_videotoolbox)
-```
-
-### Log levels
-
-Control output verbosity with `LOG_LEVEL` environment variable:
-
-```bash
-# Minimal output (default) - only key progress info
-pnpm run render:video-1
-
-# Detailed debug output - shows all subprocess logs
+# Debug mode
 LOG_LEVEL=debug pnpm run render:video-1
-
-# Or use the debug script
-pnpm run render:debug video-1
 ```
-
-**Log levels:**
-- `info` (default): Key progress, clip transitions, completion status
-- `debug`: All subprocess output (Vite, ffmpeg, Puppeteer, browser logs)
-- `warn`: Warnings and errors only
-- `error`: Errors only
-
-### Output
-
-Video saved to: `public/video/render-<projectId>.mp4`
-
-### How it works
-
-The renderer:
-1. **Checks audio**: Generates TTS if missing (unless project has no speech)
-2. **Starts dev server**: Launches Vite on specified port
-3. **Opens browser**: Puppeteer in headless mode with time control
-4. **Renders frames**: Captures PNG screenshots at 30 FPS
-   - Uses word boundary data to sync media element timing
-   - Shows progress every 30 frames
-5. **Combines audio**: Concatenates all clip audio files
-6. **Encodes video**: FFmpeg merges frames + audio → MP4
-7. **Cleans up**: Removes temporary frames and audio files
-
-### Word boundary synchronization
-
-The renderer uses TTS word boundary data (`public/audio/<projectId>/<clipIndex>.json`) to precisely time when media elements appear:
-
-```json
-// Example: public/audio/video-2/0.json
-{
-  "Metadata": [{
-    "Type": "WordBoundary",
-    "Data": {
-      "Offset": 1000000,      // 0.1 seconds (in 100-nanosecond units)
-      "Duration": 3125000,    // 0.3125 seconds
-      "text": { "Text": "欢迎" }
-    }
-  }]
-}
-```
-
-When a clip has `media: [{ src: "/footage/code.html", word: "欢迎" }]`, the element appears at 0.1s (minus 0.4s pre-roll = immediately visible).
-
-### Performance tips
-
-- **GPU acceleration**: Use `--gpu` on macOS for faster encoding
-- **Parallel rendering**: Run multiple renders on different projects simultaneously
-- **Debug mode**: Only use `LOG_LEVEL=debug` when troubleshooting
-- **Clean builds**: Delete `public/video/frames-*` if render fails mid-process
-
-### Rendering improvements
-
-- **Accurate timing**: Clip durations calculated from all WordBoundary events to prevent premature video ending
-- **Progress logging**: Shows per-clip progress and frame rendering status
-- **Silent project support**: Skips audio generation for projects without speech
-- **Forced audio regeneration**: Use `--force-audio` to regenerate TTS when speech content changes
-- **Quiet mode**: External process output hidden by default (ffmpeg, Vite, Puppeteer)
-
----
-
-## Full Example Workflow
-
-User brief: *"Make a 1-minute video introducing TypeScript generics"*
-
-```bash
-# 1. Write script → public/script/ts-generics.json  (see format above)
-
-# 2. Generate TTS
-pnpm tsx scripts/generate-audio.ts ts-generics
-
-# 3. Create any custom HTML footage → public/footage/generics-diagram.html
-
-# 4. Start dev server (if not running)
-pnpm dev &
-
-# 5. Render (using pnpm script - recommended)
-pnpm run render:ts-generics
-
-# Or with custom options
-LOG_LEVEL=info node scripts/render.js ts-generics --script ts-generics --gpu
-
-# Output: public/video/render-ts-generics.mp4
-```
-
-### Quick render workflow
-
-For projects already configured in package.json:
-
-```bash
-# Render video-1 (minimal output)
-pnpm run render:video-1
-
-# Render video-2 with debug logs
-LOG_LEVEL=debug pnpm run render:video-2
-
-# Force audio regeneration
-node scripts/render.js video-1 --force-audio
-```
-
----
-
-## Troubleshooting
-
-| Problem | Fix |
-|---------|-----|
-| Chrome not found | Set `PUPPETEER_EXECUTABLE_PATH=/path/to/chrome` (or `/path/to/brave`) |
-| FFmpeg not found | Install via `brew install ffmpeg` or `apt install ffmpeg` |
-| Audio out of sync | Re-run `generate-audio.ts`; check `rate` field |
-| HTML asset blank | Open the `.html` file in browser to debug; check console errors |
-| Port conflict | Use `--port` flag with a free port |
-| Script not loading | Ensure file is at `public/script/<name>.json` with proper JSON structure |
-| Video ends prematurely | Use `--force-audio` to regenerate timing data |
-| Wrong language spoken | Check voice field in clips; ensure `media.word` matches speech language |
-| Media timing off | Verify `media.word` values match actual words in speech text |
-| Too many logs | Use default `LOG_LEVEL=info` or add to package.json scripts |
-| Render hangs | Check if dev server is running; try `--port` with different port |
-| Black frames | Verify footage HTML files work in browser; check iframe src paths |
-
----
-
-## Recent Updates
-
-### JS to JSON Migration
-- Video scripts now use JSON format instead of JavaScript modules
-- Scripts located at `public/script/<name>.json` with `{projects: {...}}` structure
-- Frontend loads scripts via `fetch()` instead of dynamic imports
-- Audio generation script reads JSON from filesystem
-
-### Chinese Speech Support
-- Added `zh-CN-XiaoxiaoNeural` voice for Mandarin narration
-- Enhanced word boundary matching for Chinese text processing
-- Improved timing synchronization with Chinese TTS tokens
-
-### Rendering Enhancements
-- **Progress logging**: Real-time feedback during frame rendering
-- **Accurate timing**: Clip durations calculated from all WordBoundary events
-- **Silent projects**: Automatic detection and skipping of audio generation
-- **Force audio regeneration**: `--force-audio` flag for updating changed speech
-
-### Word Trigger Optimization
-- Enhanced `media.word` matching with normalization and fuzzy matching
-- Support for Chinese characters and multi-word triggers
-- Robust handling of TTS token variations
-
----
-
-## AI Script-Writing Tips
-
-When authoring scripts for a user:
-
-1. **Gather the brief first**: topic, target length, audience, preferred theme, language/voice.
-2. **Outline before scripting**: list clip titles and key points, confirm with user.
-3. **Write speech naturally**: read it aloud mentally — does it flow? Avoid bullet-point prose.
-4. **Interleave clip types**: don't use the same type back-to-back more than twice.
-5. **Code clips**: show only the most relevant lines; add comments inside the code for clarity.
-6. **End strong**: last clip should summarize or call-to-action with an upbeat `speech`.
-7. **After scripting**: immediately proceed to generate audio and assets unless user says otherwise.

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { FootageClip } from './components/FootageClip';
 import { DocSpot } from './components/DocSpot';
 import { Tweet } from './components/Tweet';
@@ -32,7 +32,10 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [disableTransitions, setDisableTransitions] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('no-transitions') === 'true';
+  });
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [stageScale, setStageScale] = useState(1);
@@ -195,6 +198,28 @@ export default function App() {
   const hasClips = project.clips.length > 0;
   const currentClip: VideoClip | null =
     hasClips && currentClipIndex < project.clips.length ? project.clips[currentClipIndex] : null;
+  
+  // Check if current clip is a transition
+  const isCurrentClipTransition = currentClip?.type === 'transition';
+  
+  // For transition clips, we need to find the previous and next content clips
+  const getPreviousContentClip = (index: number): VideoClip | null => {
+    for (let i = index - 1; i >= 0; i--) {
+      if (project.clips[i].type !== 'transition') {
+        return project.clips[i];
+      }
+    }
+    return null;
+  };
+  
+  const getNextContentClip = (index: number): VideoClip | null => {
+    for (let i = index + 1; i < project.clips.length; i++) {
+      if (project.clips[i].type !== 'transition') {
+        return project.clips[i];
+      }
+    }
+    return null;
+  };
 
   // Get duration from TTS hook or override
   const { duration: ttsDuration, audio } = useTTS({
@@ -203,41 +228,40 @@ export default function App() {
     clipIndex: currentClipIndex
   });
 
-  const clipDuration = (ttsDuration || 3);
+  const hasSpeech = !!(currentClip?.speech?.trim() || (currentClip?.docSegments && currentClip.docSegments.some(s => s.speech?.trim())));
+  const clipDuration = (hasSpeech ? (ttsDuration || 999) : (currentClip?.duration || 3));
 
   const requestRef = useRef<number>(0);
   const previousTimeRef = useRef<number>(0);
 
   const animate = useCallback((time: number) => {
     if (previousTimeRef.current !== undefined) {
-      const deltaTime = (time - previousTimeRef.current) / 1000;
-
-      setCurrentTime(prevTime => {
-        const newTime = prevTime + deltaTime;
-
-        if (clipDuration > 0 && newTime >= clipDuration && hasClips) {
-          if (currentClipIndex < project.clips.length - 1) {
-            // Cap at duration while waiting for the effect to switch clips
-            return clipDuration;
-          } else {
-            setIsPlaying(false);
+      if (isPlaying && audio && !audio.paused) {
+        // AUDIO-DRIVEN CLOCK: Visual progress exactly follows the speech
+        setCurrentTime(audio.currentTime);
+      } else {
+        // TIME-DRIVEN CLOCK: Constant progression for non-speech clips
+        const deltaTime = (time - previousTimeRef.current) / 1000;
+        setCurrentTime(prevTime => {
+          const newTime = prevTime + deltaTime;
+          if (clipDuration > 0 && newTime >= clipDuration && hasClips) {
             return clipDuration;
           }
-        }
-        return newTime;
-      });
+          return newTime;
+        });
+      }
     }
     previousTimeRef.current = time;
     if (isPlaying) {
       requestRef.current = requestAnimationFrame(animate);
     }
-  }, [isPlaying, clipDuration, currentClipIndex, project.clips.length, hasClips]);
+  }, [isPlaying, audio, clipDuration, hasClips]);
 
   useEffect(() => {
     if (audio) {
       if (isPlaying) {
-        // Sync time only when starting or if it drifts significantly
-        if (Math.abs(audio.currentTime - currentTime) > 0.3) {
+        // Sync time only when seeking or starting
+        if (Math.abs(audio.currentTime - currentTime) > 0.5) {
           audio.currentTime = currentTime;
         }
         audio.play().catch(e => console.warn("Audio play blocked", e));
@@ -258,22 +282,30 @@ export default function App() {
     return () => cancelAnimationFrame(requestRef.current);
   }, [isPlaying, animate]);
 
-  // Handle clip switching with fade out
+  // Handle clip switching
   useEffect(() => {
-    if (clipDuration > 0 && currentTime >= clipDuration && hasClips && !isTransitioning) {
+    if (clipDuration > 0 && currentTime >= clipDuration && hasClips) {
       if (currentClipIndex < project.clips.length - 1) {
-        setIsTransitioning(true);
-        // Start fade out, then switch clip after 300ms
-        setTimeout(() => {
-          setCurrentClipIndex(prev => prev + 1);
+        let nextIndex = currentClipIndex + 1;
+        
+        // Skip transition clips if transitions are disabled
+        if (disableTransitions) {
+          while (nextIndex < project.clips.length && project.clips[nextIndex].type === 'transition') {
+            nextIndex++;
+          }
+        }
+        
+        if (nextIndex < project.clips.length) {
+          setCurrentClipIndex(nextIndex);
           setCurrentTime(0);
-          setIsTransitioning(false);
-        }, 300);
+        } else {
+          setIsPlaying(false);
+        }
       } else {
         setIsPlaying(false);
       }
     }
-  }, [currentTime, clipDuration, currentClipIndex, project.clips.length, hasClips, isTransitioning]);
+  }, [currentTime, clipDuration, currentClipIndex, project.clips.length, hasClips, disableTransitions]);
 
   // Expose seekTo for headless rendering
   useEffect(() => {
@@ -293,24 +325,18 @@ export default function App() {
     const checkAudio = async () => {
       try {
         const projectClips = projects[activeProject]?.clips || [];
-        const hasAnySpeech = projectClips.some(c => {
-          // Check legacy speech field
-          if (typeof c?.speech === 'string' && c.speech.trim().length > 0) {
-            return true;
-          }
-          // Check new docSegments structure
-          if (c?.docSegments && Array.isArray(c.docSegments)) {
-            return c.docSegments.some(segment =>
-              typeof segment?.speech === 'string' && segment.speech.trim().length > 0
-            );
-          }
+        const firstSpeechClipIndex = projectClips.findIndex(c => {
+          if (typeof c?.speech === 'string' && c.speech.trim().length > 0) return true;
+          if (c?.docSegments && Array.isArray(c.docSegments) && c.docSegments.some(s => s?.speech?.trim())) return true;
           return false;
         });
-        if (!hasAnySpeech) {
+
+        if (firstSpeechClipIndex === -1) {
           setIsGenerating(false);
           return;
         }
-        const testUrl = `/audio/${activeProject}/0.mp3?t=${Date.now()}`;
+
+        const testUrl = `/audio/${activeProject}/${firstSpeechClipIndex}.mp3`;
         console.log(`[checkAudio] Checking ${testUrl}`);
         const resp = await fetch(testUrl, { method: 'HEAD' });
         const contentType = resp.headers.get('content-type');
@@ -343,7 +369,10 @@ export default function App() {
         setIsGenerating(false);
       }
     };
-    if (activeProject) checkAudio();
+
+    if (activeProject) {
+      checkAudio();
+    }
   }, [activeProject, projects]);
 
   const togglePlay = () => setIsPlaying(!isPlaying);
@@ -354,28 +383,93 @@ export default function App() {
   };
   const nextClip = () => {
     if (currentClipIndex < project.clips.length - 1) {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentClipIndex(prev => prev + 1);
+      let nextIndex = currentClipIndex + 1;
+      
+      // Skip transition clips if transitions are disabled
+      if (disableTransitions) {
+        while (nextIndex < project.clips.length && project.clips[nextIndex].type === 'transition') {
+          nextIndex++;
+        }
+      }
+      
+      if (nextIndex < project.clips.length) {
+        setCurrentClipIndex(nextIndex);
         setCurrentTime(0);
-        setIsTransitioning(false);
-      }, 300);
+      }
     }
   };
+  
   const prevClip = () => {
     if (currentClipIndex > 0) {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentClipIndex(prev => prev - 1);
+      let prevIndex = currentClipIndex - 1;
+      
+      // Skip transition clips if transitions are disabled
+      if (disableTransitions) {
+        while (prevIndex >= 0 && project.clips[prevIndex].type === 'transition') {
+          prevIndex--;
+        }
+      }
+      
+      if (prevIndex >= 0) {
+        setCurrentClipIndex(prevIndex);
         setCurrentTime(0);
-        setIsTransitioning(false);
-      }, 300);
+      }
     }
   };
 
   const toggleOrientation = () => {
     setIsPlaying(false);
     setIsPortrait(!isPortrait);
+  };
+
+  // Simplified transition rendering
+  const renderClip = (clip: VideoClip, clipIndex: number, key: string) => {
+    if (!clip) return null;
+    
+    const clipKey = `${activeProject}-${clipIndex}-${key}`;
+    
+    if (clip.type === 'docSpot') {
+      return (
+        <DocSpot
+          key={clipKey}
+          clip={clip}
+          currentTime={currentTime}
+          projectId={activeProject}
+          clipIndex={clipIndex}
+          duration={clipDuration}
+          isPortrait={isPortrait}
+        />
+      );
+    }
+    
+    if (clip.type === 'tweet') {
+      return (
+        <Tweet
+          key={clipKey}
+          clip={clip}
+          currentTime={currentTime}
+          projectId={activeProject}
+          clipIndex={clipIndex}
+          duration={clipDuration}
+          isPortrait={isPortrait}
+        />
+      );
+    }
+    
+    if (clip.type === 'footagesAroundTitle' || clip.type === 'footagesFullScreen') {
+      return (
+        <FootageClip
+          key={clipKey}
+          clip={clip}
+          currentTime={currentTime}
+          projectId={activeProject}
+          clipIndex={clipIndex}
+          duration={clipDuration}
+        />
+      );
+    }
+    
+    return null;
   };
 
   return (
@@ -415,44 +509,89 @@ export default function App() {
               />
             )}
 
-            {currentClip && currentClip.type === 'docSpot' && (
-              <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-                <DocSpot
-                  key={`${activeProject}-${currentClipIndex}`}
-                  clip={currentClip}
-                  currentTime={currentTime}
-                  projectId={activeProject}
-                  clipIndex={currentClipIndex}
-                  duration={clipDuration}
-                  isPortrait={isPortrait}
-                />
+            {/* Render current clip or transition */}
+            {currentClip && currentClip.type === 'transition' && !disableTransitions ? (
+              // Transition clip: render previous and next content clips with transition effect
+              <>
+                {(() => {
+                  const prevClip = getPreviousContentClip(currentClipIndex);
+                  const nextClip = getNextContentClip(currentClipIndex);
+                  const transitionProgress = Math.min(currentTime / (currentClip.duration || 0.5), 1);
+                  const transitionType = currentClip.transitionType || 'fade';
+                  
+                  const getTransitionStyle = (isOut: boolean) => {
+                    const progress = isOut ? (1 - transitionProgress) : transitionProgress;
+                    const baseStyle: React.CSSProperties = {
+                      transition: 'all 0.1s ease-in-out',
+                      opacity: progress
+                    };
+                    
+                    switch (transitionType) {
+                      case 'slideUp':
+                        if (isOut) {
+                          baseStyle.transform = `translateY(-${transitionProgress * 16}px)`;
+                        } else {
+                          baseStyle.transform = `translateY(${(1 - transitionProgress) * 16}px)`;
+                        }
+                        break;
+                      case 'slideRight':
+                        if (isOut) {
+                          baseStyle.transform = `translateX(-${transitionProgress * 16}px)`;
+                        } else {
+                          baseStyle.transform = `translateX(${(1 - transitionProgress) * 16}px)`;
+                        }
+                        break;
+                      case 'zoomIn':
+                        if (isOut) {
+                          baseStyle.transform = `scale(${1 + transitionProgress * 0.1})`;
+                        } else {
+                          baseStyle.transform = `scale(${0.9 + transitionProgress * 0.1})`;
+                        }
+                        break;
+                      default: // fade
+                        break;
+                    }
+                    
+                    return baseStyle;
+                  };
+                  
+                  return (
+                    <>
+                      {/* Previous clip (fading out) */}
+                      {prevClip && (
+                        <div 
+                          className="absolute inset-0"
+                          style={getTransitionStyle(true)}
+                        >
+                          {renderClip(prevClip, currentClipIndex - 1, 'prev')}
+                        </div>
+                      )}
+                      
+                      {/* Next clip (fading in) */}
+                      {nextClip && (
+                        <div 
+                          className="absolute inset-0"
+                          style={getTransitionStyle(false)}
+                        >
+                          {renderClip(nextClip, currentClipIndex + 1, 'next')}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </>
+            ) : currentClip && currentClip.type === 'transition' && disableTransitions ? (
+              // Skip transition when disabled - show nothing or next clip
+              <div className="absolute inset-0">
+                {(() => {
+                  const nextClip = getNextContentClip(currentClipIndex);
+                  return nextClip ? renderClip(nextClip, currentClipIndex + 1, 'skip-transition') : null;
+                })()}
               </div>
-            )}
-
-            {currentClip && currentClip.type === 'tweet' && (
-              <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-                <Tweet
-                  key={`${activeProject}-${currentClipIndex}`}
-                  clip={currentClip}
-                  currentTime={currentTime}
-                  projectId={activeProject}
-                  clipIndex={currentClipIndex}
-                  duration={clipDuration}
-                  isPortrait={isPortrait}
-                />
-              </div>
-            )}
-
-            {currentClip && (currentClip.type === 'footagesAroundTitle' || currentClip.type === 'footagesFullScreen') && (
-              <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-                <FootageClip
-                  key={`${activeProject}-${currentClipIndex}`}
-                  clip={currentClip}
-                  currentTime={currentTime}
-                  projectId={activeProject}
-                  clipIndex={currentClipIndex}
-                  duration={clipDuration}
-                />
+            ) : (
+              // Regular content clip
+              <div className="absolute inset-0">
+                {renderClip(currentClip, currentClipIndex, 'current')}
               </div>
             )}
 
@@ -479,6 +618,32 @@ export default function App() {
               {isPortrait ? <Monitor size={20} /> : <Smartphone size={20} />}
             </button>
 
+            <button
+              onClick={() => setDisableTransitions(!disableTransitions)}
+              className={`p-3 rounded-full transition-colors ${
+                disableTransitions 
+                  ? 'bg-red-600 text-white hover:bg-red-700' 
+                  : 'hover:bg-white/10 text-zinc-400 hover:text-white'
+              }`}
+              title={disableTransitions ? "Enable Transitions" : "Disable Transitions"}
+            >
+              <RefreshCw size={20} className={disableTransitions ? 'opacity-50' : ''} />
+            </button>
+
+            <button
+              onClick={() => {
+                console.log('Force next clip - Current:', currentClipIndex, 'Type:', currentClip?.type);
+                if (currentClipIndex < project.clips.length - 1) {
+                  setCurrentClipIndex(currentClipIndex + 1);
+                  setCurrentTime(0);
+                }
+              }}
+              className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+              title="Force Next Clip (Debug)"
+            >
+              <SkipForward size={16} />
+            </button>
+
             <span className="text-zinc-600">|</span>
 
             <div className="flex flex-col">
@@ -502,8 +667,13 @@ export default function App() {
             <div className="flex flex-col">
               <span className="text-xs font-mono text-zinc-400 uppercase font-bold">Current Clip</span>
               <span className="text-sm font-bold text-white">
-                {hasClips ? `${currentClipIndex + 1} / ${project.clips.length} : ${currentClip?.type}` : 'No clips'}
+                {hasClips ? `${currentClipIndex + 1} / ${project.clips.length} : ${currentClip?.type}${disableTransitions ? ' (no-trans)' : ''}` : 'No clips'}
               </span>
+              {currentClip?.type === 'transition' && (
+                <span className="text-xs text-yellow-400">
+                  {currentClip.transitionType} ({currentClip.duration || 0.5}s)
+                </span>
+              )}
             </div>
             <span className="text-zinc-600">|</span>
             <div className="flex flex-col">
