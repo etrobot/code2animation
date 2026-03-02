@@ -6,6 +6,7 @@ interface PlaybackControlsProps {
   projects: Record<string, any>;
   activeProject: string;
   isGenerating: boolean;
+  isLoadingAudio: boolean;
   
   // Playback state
   isPlaying: boolean;
@@ -20,7 +21,7 @@ interface PlaybackControlsProps {
   
   // Event handlers
   onProjectChange: (projectId: string) => void;
-  onTogglePlay: () => void;
+  onTogglePlay: () => Promise<void>;
   onNextClip: () => void;
   onPrevClip: () => void;
   onReset: () => void;
@@ -32,6 +33,7 @@ export default function PlaybackControls({
   projects,
   activeProject,
   isGenerating,
+  isLoadingAudio,
   isPlaying,
   currentClipIndex,
   currentTime,
@@ -63,10 +65,10 @@ export default function PlaybackControls({
           ))}
         </select>
 
-        {isGenerating && (
+        {(isGenerating || isLoadingAudio) && (
           <div className="flex items-center space-x-2 text-[#00FF00] text-xs">
             <div className="animate-spin w-3 h-3 border border-[#00FF00] border-t-transparent rounded-full"></div>
-            <span>Generating Audio...</span>
+            <span>{isGenerating ? 'Generating Audio...' : 'Loading Audio...'}</span>
           </div>
         )}
 
@@ -101,10 +103,26 @@ export default function PlaybackControls({
         </button>
 
         <button
-          onClick={onTogglePlay}
-          className="flex items-center justify-center w-10 h-10 bg-white text-black rounded-full hover:bg-[#00FF00] hover:scale-105 transition-all"
+          onClick={() => {
+            console.log('[PlayButton] Button clicked!');
+            if (!isLoadingAudio) {
+              onTogglePlay();
+            }
+          }}
+          disabled={isLoadingAudio}
+          className={`flex items-center justify-center w-10 h-10 rounded-full transition-all ${
+            isLoadingAudio 
+              ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+              : 'bg-white text-black hover:bg-[#00FF00] hover:scale-105'
+          }`}
         >
-          {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-1" />}
+          {isLoadingAudio ? (
+            <div className="animate-spin w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full"></div>
+          ) : isPlaying ? (
+            <Pause size={18} fill="currentColor" />
+          ) : (
+            <Play size={18} fill="currentColor" className="ml-1" />
+          )}
         </button>
 
         <button 

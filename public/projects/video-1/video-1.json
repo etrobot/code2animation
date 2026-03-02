@@ -1,14 +1,14 @@
 {
   "name": "video-1",
-  "background": "/projects/video-1/footage/global_bg.html",
+  "background": "global_bg.html",
   "clips": [
     {
       "type": "footage",
       "speech": "Introducing the Agent SaaS computer. A new way to interact with your data and workflows.",
       "media": [
         {
-          "src": "/projects/video-1/footage/agentsaas_intro_text.html",
-          "words": ["Introducing"]
+          "file": "agentsaas_intro_text.html",
+          "words": "Introducing the Agent"
         },
         {
           "type": "transition",
@@ -16,8 +16,8 @@
           "duration": 0.5
         },
         {
-          "src": "/projects/video-1/footage/agentsaas_intro_toggle.html",
-          "words": ["new"]
+          "file": "agentsaas_intro_toggle.html",
+          "words": "new way to"
         }
       ]
     },
@@ -31,8 +31,8 @@
       "speech": "From complex financial research to autonomous subagent execution. We handle the heavy lifting while you focus on the strategy.",
       "media": [
         {
-          "src": "/projects/video-1/footage/agentsaas_complex_task.html",
-          "words": ["financial"]
+          "file": "agentsaas_complex_task.html",
+          "words": "complex financial research"
         }
       ]
     },
@@ -46,8 +46,18 @@
       "speech": "Extract insights from any source, automate your life, and stay connected with native integrations that work where you do.",
       "media": [
         {
-          "src": "/projects/video-1/footage/agentsaas_multimedia.html",
-          "words": ["Extract"]
+          "file": "agentsaas_multimedia.html",
+          "words": "Extract insights from"
+        },
+        {
+          "type": "transition",
+          "transitionType": "fade",
+          "duration": 0.8,
+          "keepPrev": true
+        },
+        {
+          "file": "agentsaas_slack.html",
+          "words": "stay connected with"
         }
       ]
     },
@@ -61,8 +71,8 @@
       "speech": "Experience the next generation of autonomous building. Computer researches, computer builds. Join the future today.",
       "media": [
         {
-          "src": "/projects/video-1/footage/agentsaas_ending.html",
-          "words": ["Experience"]
+          "file": "agentsaas_ending.html",
+          "words": "Experience the next"
         }
       ]
     }

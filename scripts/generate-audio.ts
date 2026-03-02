@@ -80,6 +80,7 @@ async function generateAudioForProject(projectId: string) {
   const OUTPUT_DIR = path.resolve(process.cwd(), 'public/projects', projectId, 'audio');
   await ensureDir(OUTPUT_DIR);
 
+  const tts = new MsEdgeTTS();
   let clipIndex = 0;
 
   for (let i = 0; i < project.clips.length; i++) {
@@ -122,79 +123,49 @@ async function generateAudioForProject(projectId: string) {
     console.log(`Speech text: ${speechText.substring(0, 100)}${speechText.length > 100 ? '...' : ''}`);
 
     try {
-      // Create a new TTS instance for each clip to avoid state issues
-      const tts = new MsEdgeTTS();
-      
       await tts.setMetadata(
         voice,
-        OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3
+        OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3,
+        {
+          wordBoundaryEnabled: true,
+        }
       );
 
       const audioPath = path.join(OUTPUT_DIR, `${clipIndex}.mp3`);
       const metaPath = path.join(OUTPUT_DIR, `${clipIndex}.json`);
 
-      // Generate SSML for better control (optional)
-      const ssml = `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='${isChinese ? 'zh-CN' : 'en-US'}'>
-        <voice name='${voice}'>
-          <prosody pitch='+0Hz' rate='+0%' volume='+0%'>
-            ${speechText}
-          </prosody>
-        </voice>
-      </speak>`;
-
-      // Use rawToStream for SSML or toStream for plain text
-      const result = await tts.rawToStream(ssml);
-      
+      const { audioStream, metadataStream } = tts.toStream(speechText);
       const audioFile = fs.createWriteStream(audioPath);
       const metadata: any[] = [];
 
-      // Handle metadata if available
-      if (result.metadataStream) {
-        result.metadataStream.on('data', (data) => {
-          let content = data;
-          if (Buffer.isBuffer(data)) {
-            content = data.toString('utf8');
+      metadataStream.on('data', (data) => {
+        let content = data;
+        if (Buffer.isBuffer(data)) {
+          content = data.toString('utf8');
+        }
+        if (typeof content === 'string') {
+          try {
+            const parsed = JSON.parse(content);
+            metadata.push(parsed);
+          } catch (e) {
+            // Ignore non-json chunks
           }
-          if (typeof content === 'string') {
-            try {
-              const parsed = JSON.parse(content);
-              metadata.push(parsed);
-            } catch (e) {
-              // Ignore non-json chunks
-            }
-          } else {
-            metadata.push(content);
-          }
-        });
-      }
-
-      await new Promise((resolve, reject) => {
-        result.audioStream.pipe(audioFile);
-        result.audioStream.on('end', resolve);
-        result.audioStream.on('error', reject);
+        } else {
+          metadata.push(content);
+        }
       });
 
-      // Save metadata if we have any
-      if (metadata.length > 0) {
-        fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
-      }
+      await new Promise((resolve, reject) => {
+        audioStream.pipe(audioFile);
+        audioStream.on('end', resolve);
+        audioStream.on('error', reject);
+      });
 
-      // Save clip info for reference
-      const clipInfoPath = path.join(OUTPUT_DIR, `${clipIndex}_info.json`);
-      fs.writeFileSync(clipInfoPath, JSON.stringify({
-        originalClipIndex: i,
-        clipIndex,
-        speech: speechText,
-        voice,
-        charCount,
-        audioFile: `${clipIndex}.mp3`
-      }, null, 2));
-
-      console.log(`✅ Saved: ${audioPath}`);
+      fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
+      console.log(`Saved: ${audioPath}`);
       clipIndex++;
-
     } catch (err) {
-      console.error(`❌ Error generating audio for clip ${i + 1}:`, err);
+      console.error(`Error generating audio for clip ${i}:`, err);
     }
   }
 

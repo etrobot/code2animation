@@ -11,6 +11,7 @@ export interface VideoClip {
   voice?: string;
   duration?: number;
   transitionType?: string;
+  keepPrev?: boolean;
 }
 
 export interface WordBoundaryEvent {

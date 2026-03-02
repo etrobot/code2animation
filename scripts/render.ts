@@ -21,7 +21,6 @@ if (!projectId) {
 const WIDTH = isPortrait ? 1080 : 1920;
 const HEIGHT = isPortrait ? 1920 : 1080;
 const FPS = 30;
-const FRAME_MS = 1000 / FPS;
 const BASE_PORT = 5175;
 
 const OUTPUT_DIR = path.resolve(process.cwd(), 'public', 'video');
@@ -40,95 +39,81 @@ fs.mkdirSync(FRAMES_DIR, { recursive: true });
 function detectBrowserExecutable() {
   if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
   
+  const platform = os.platform();
   const arch = os.arch();
+  
+  // For x64 architecture, let Puppeteer handle it automatically
   if (arch === 'x64') return undefined;
   
-  const candidates = [
-    'brave-browser',
-    'chromium-browser', 
-    'chromium',
-    'google-chrome',
-    'google-chrome-stable'
-  ];
-  
-  for (const name of candidates) {
-    try {
-      const result = execSync(`which ${name}`, { encoding: 'utf-8' }).trim();
-      if (result) return result;
-    } catch { }
-  }
-  
-  return undefined;
-}
-
-function loadRenderTimings(audioDir) {
-  if (!fs.existsSync(audioDir)) return [];
-  
-  const timingFiles = fs.readdirSync(audioDir).filter(f => f.endsWith('_info.json'));
-  const indexed = timingFiles
-    .map(file => ({
-      file,
-      index: Number.parseInt(path.basename(file, '_info.json'), 10)
-    }))
-    .filter(item => Number.isFinite(item.index))
-    .sort((a, b) => a.index - b.index);
-  
-  const timings = [];
-  let currentStart = 0;
-  
-  for (const item of indexed) {
-    try {
-      const audioPath = path.join(audioDir, `${item.index}.mp3`);
-      let duration = 4; // default
-      
-      if (fs.existsSync(audioPath)) {
-        try {
-          // Use ffprobe to get actual audio duration
-          const result = execSync(
-            `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${audioPath}"`,
-            { encoding: 'utf-8' }
-          ).trim();
-          
-          const parsedDuration = parseFloat(result);
-          if (!isNaN(parsedDuration) && parsedDuration > 0) {
-            duration = parsedDuration + 0.3; // Add small buffer
-          }
-        } catch (err) {
-          console.warn(`Failed to get duration for ${audioPath}, using default`);
+  if (platform === 'darwin') {
+    // macOS browser detection
+    const macCandidates = [
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+      '/usr/local/bin/chromium',
+      '/usr/local/bin/google-chrome',
+      '/opt/homebrew/bin/chromium',
+      '/opt/homebrew/bin/google-chrome'
+    ];
+    
+    for (const path of macCandidates) {
+      try {
+        if (fs.existsSync(path)) {
+          console.log(`Found browser: ${path}`);
+          return path;
         }
-      }
-      
-      timings.push({ 
-        start: currentStart, 
-        end: currentStart + duration, 
-        duration,
-        audioFile: `${item.index}.mp3`
-      });
-      
-      console.log(`Audio ${item.index}: ${duration.toFixed(2)}s (cumulative: ${currentStart.toFixed(2)}s)`);
-      currentStart += duration;
-    } catch (err) {
-      console.warn(`Failed to load timing for ${item.file}:`, err);
-      const duration = 4;
-      timings.push({ 
-        start: currentStart, 
-        end: currentStart + duration, 
-        duration,
-        audioFile: `${item.index}.mp3`
-      });
-      currentStart += duration;
+      } catch { }
+    }
+    
+    // Try using which command for Homebrew installations
+    const brewCandidates = [
+      'chromium',
+      'google-chrome',
+      'brave-browser'
+    ];
+    
+    for (const name of brewCandidates) {
+      try {
+        const result = execSync(`which ${name}`, { encoding: 'utf-8' }).trim();
+        if (result) {
+          console.log(`Found browser via which: ${result}`);
+          return result;
+        }
+      } catch { }
+    }
+  } else {
+    // Linux browser detection
+    const linuxCandidates = [
+      'brave-browser',
+      'chromium-browser', 
+      'chromium',
+      'google-chrome',
+      'google-chrome-stable'
+    ];
+    
+    for (const name of linuxCandidates) {
+      try {
+        const result = execSync(`which ${name}`, { encoding: 'utf-8' }).trim();
+        if (result) {
+          console.log(`Found browser: ${result}`);
+          return result;
+        }
+      } catch { }
     }
   }
   
-  return timings;
+  console.warn('No suitable browser found, using Puppeteer default');
+  return undefined;
 }
 
-async function findFreePort(startPort) {
+async function findFreePort(startPort: number): Promise<number> {
   const { createServer } = await import('net');
   return new Promise((resolve, reject) => {
     const server = createServer();
     server.listen(startPort, () => {
-      const port = server.address().port;
+      const port = (server.address() as any).port;
       server.close(() => resolve(port));
     });
     server.on('error', () => {
@@ -147,7 +132,7 @@ async function main() {
   }
   
   const projectConfig = JSON.parse(fs.readFileSync(projectConfigPath, 'utf-8'));
-  const expectedAudioCount = projectConfig.clips.filter(c => c.type !== 'transition' && c.speech).length;
+  const expectedAudioCount = projectConfig.clips.filter((c: any) => c.type !== 'transition' && c.speech).length;
   
   // Check if audio exists
   const audioDir = path.resolve(process.cwd(), 'public', 'projects', projectId, 'audio');
@@ -165,7 +150,7 @@ async function main() {
     try {
       execSync(`npm run generate-audio ${projectId}`, { stdio: 'inherit' });
       console.log(`\n✅ Audio generation completed!\n`);
-    } catch (error) {
+    } catch (error: any) {
       console.error(`\n❌ Failed to generate audio:`, error.message);
       console.error(`\nPlease run manually: npm run generate-audio ${projectId}`);
       process.exit(1);
@@ -173,9 +158,6 @@ async function main() {
   } else {
     console.log(`✅ Audio files complete for project "${projectId}" (${existingAudioFiles.length}/${expectedAudioCount})`);
   }
-  
-  const renderTimings = loadRenderTimings(audioDir);
-  console.log(`Loaded ${renderTimings.length} audio clips for rendering`);
   
   const PORT = await findFreePort(BASE_PORT);
   const BASE_URL = `http://localhost:${PORT}/?record=true&orientation=${isPortrait ? 'portrait' : 'landscape'}&project=${projectId}`;
@@ -186,17 +168,17 @@ async function main() {
     shell: true
   });
   
-  await new Promise((resolve, reject) => {
+  await new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error('Server start timeout')), 20000);
     
-    server.stdout.on('data', (data) => {
+    server.stdout?.on('data', (data) => {
       if (data.toString().includes('Local:') || data.toString().includes('ready in')) {
         clearTimeout(timeout);
-        resolve(null);
+        resolve();
       }
     });
     
-    server.stderr.on('data', (data) => {
+    server.stderr?.on('data', (data) => {
       const msg = data.toString();
       if (msg.includes('EADDRINUSE')) {
         clearTimeout(timeout);
@@ -208,7 +190,7 @@ async function main() {
   console.log('Launching browser for frame-by-frame rendering...');
   const executablePath = detectBrowserExecutable();
   const browser = await puppeteer.launch({
-    headless: "new",
+    headless: true,
     ...(executablePath ? { executablePath } : {}),
     args: [
       '--no-sandbox',
@@ -229,27 +211,22 @@ async function main() {
   page.setDefaultTimeout(180000);
   await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
   
-  await page.evaluateOnNewDocument((timings) => {
-    window.__renderTimings = timings;
-    window.__skipAudioPreload = true;
-  }, renderTimings);
-  
   console.log(`Navigating to ${BASE_URL}...`);
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   
   console.log('Waiting for app to be ready...');
   await Promise.race([
-    page.waitForFunction(() => typeof window.seekTo === 'function', { timeout: 30000 }),
+    page.waitForFunction(() => typeof (window as any).seekTo === 'function', { timeout: 30000 }),
     page.waitForSelector('.ready-to-record', { timeout: 30000 })
   ]);
   
   // Prepare app for deterministic rendering
   await page.evaluate(() => {
-    window.suppressTTS = true;
+    (window as any).suppressTTS = true;
   });
   
   const totalDuration = await page.evaluate(() => {
-    return window.getTotalDuration();
+    return (window as any).getTotalDuration();
   });
   
   if (totalDuration === 0) {
@@ -266,14 +243,14 @@ async function main() {
     const time = i / FPS;
     
     await page.evaluate((t) => {
-      if (typeof window.seekTo === 'function') {
-        window.seekTo(t);
+      if (typeof (window as any).seekTo === 'function') {
+        (window as any).seekTo(t);
       } else {
         throw new Error('window.seekTo is not available - page may have reloaded');
       }
     }, time);
     
-    // Wait longer for iframes to load and animate
+    // Wait for iframes to load and animate
     await new Promise(r => setTimeout(r, 100));
     
     if (i % 10 === 0) {
@@ -293,7 +270,7 @@ async function main() {
   console.log('Capture complete. Closing browser...');
   
   const audioLog = await page.evaluate(() => {
-    return window.getAudioLog ? window.getAudioLog() : [];
+    return (window as any).getAudioLog ? (window as any).getAudioLog() : [];
   });
   
   await browser.close();
@@ -309,7 +286,7 @@ async function main() {
   console.log('\n🎬 Render pipeline completed!');
 }
 
-async function assembleVideo(audioLog) {
+async function assembleVideo(audioLog: Array<{ file: string; startTime: number }>) {
   const tempVideo = path.join(OUTPUT_DIR, `temp_video_${projectId}.mp4`);
   
   console.log('Step 1: Encoding frames...');
@@ -334,8 +311,8 @@ async function assembleVideo(audioLog) {
   
   console.log('Step 2: Mixing audio...');
   const inputs = ['-i', tempVideo];
-  const filterComplex = [];
-  const audioMap = [];
+  const filterComplex: string[] = [];
+  const audioMap: string[] = [];
   let validAudioCount = 0;
   
   for (let i = 0; i < audioLog.length; i++) {
@@ -396,7 +373,7 @@ async function assembleVideo(audioLog) {
       } else {
         console.warn(`\n⚠️  Compression failed, but original video is available at: ${FINAL_VIDEO}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.warn(`\n⚠️  Compression error: ${error.message}`);
       console.log(`Original video is available at: ${FINAL_VIDEO}`);
     }

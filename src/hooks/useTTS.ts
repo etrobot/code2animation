@@ -109,20 +109,26 @@ export function useTTS({ clip, projectId, clipIndex, preloadedAudio, onWordBound
 
             if (Array.isArray(data)) {
               data.forEach((item: any) => {
-                const entry = item.Metadata?.[0]?.Data || item;
-                if (entry.Type === 'WordBoundary' || item.Type === 'WordBoundary') {
-                  const evt = entry.Type === 'WordBoundary' ? entry : item;
-                  const start = evt.Offset / 10000000; // Convert from 100ns to seconds
-                  const dur = evt.Duration / 10000000;
-                  
-                  parsedAlignment.characters.push(evt.text?.Text || evt.Text || '');
-                  parsedAlignment.character_start_times_seconds.push(start);
-                  parsedAlignment.character_end_times_seconds.push(start + dur);
+                // Handle the nested structure: item.Metadata[0].Data
+                if (item.Metadata && Array.isArray(item.Metadata) && item.Metadata.length > 0) {
+                  const metadata = item.Metadata[0];
+                  if (metadata.Type === 'WordBoundary' && metadata.Data) {
+                    const start = metadata.Data.Offset / 10000000; // Convert from 100ns to seconds
+                    const dur = metadata.Data.Duration / 10000000;
+                    const text = metadata.Data.text?.Text || '';
+                    
+                    if (text) {
+                      parsedAlignment.characters.push(text);
+                      parsedAlignment.character_start_times_seconds.push(start);
+                      parsedAlignment.character_end_times_seconds.push(start + dur);
+                    }
+                  }
                 }
               });
 
-              if (isMounted) {
+              if (isMounted && parsedAlignment.characters.length > 0) {
                 setAlignment(parsedAlignment);
+                console.log(`[useTTS] Loaded ${parsedAlignment.characters.length} word boundaries`);
                 
                 // Set up word boundary tracking
                 newAudio.ontimeupdate = () => {
@@ -286,35 +292,43 @@ export function useTTS({ clip, projectId, clipIndex, preloadedAudio, onWordBound
               };
 
               data.forEach((item: any) => {
-                const entry = item.Metadata?.[0]?.Data || item;
-                if (entry.Type === 'WordBoundary' || item.Type === 'WordBoundary') {
-                  const evt = entry.Type === 'WordBoundary' ? entry : item;
-                  const start = evt.Offset / 10000000;
-                  const dur = evt.Duration / 10000000;
-                  
-                  parsedAlignment.characters.push(evt.text?.Text || evt.Text || '');
-                  parsedAlignment.character_start_times_seconds.push(start);
-                  parsedAlignment.character_end_times_seconds.push(start + dur);
+                // Handle the nested structure: item.Metadata[0].Data
+                if (item.Metadata && Array.isArray(item.Metadata) && item.Metadata.length > 0) {
+                  const metadata = item.Metadata[0];
+                  if (metadata.Type === 'WordBoundary' && metadata.Data) {
+                    const start = metadata.Data.Offset / 10000000;
+                    const dur = metadata.Data.Duration / 10000000;
+                    const text = metadata.Data.text?.Text || '';
+                    
+                    if (text) {
+                      parsedAlignment.characters.push(text);
+                      parsedAlignment.character_start_times_seconds.push(start);
+                      parsedAlignment.character_end_times_seconds.push(start + dur);
+                    }
+                  }
                 }
               });
 
-              setAlignment(parsedAlignment);
-              
-              // Set up word boundary tracking
-              preloadedAudio.ontimeupdate = () => {
-                if (onWordBoundaryRef.current && parsedAlignment.characters.length > 0) {
-                  const currentTime = preloadedAudio.currentTime;
-                  const wordIndex = parsedAlignment.character_start_times_seconds.findIndex((startTime, i) => {
-                    const endTime = parsedAlignment.character_end_times_seconds[i];
-                    return currentTime >= startTime && currentTime < endTime;
-                  });
-                  
-                  if (wordIndex >= 0) {
-                    const word = parsedAlignment.characters[wordIndex];
-                    if (word) onWordBoundaryRef.current(word);
+              if (parsedAlignment.characters.length > 0) {
+                setAlignment(parsedAlignment);
+                console.log(`[useTTS] Loaded ${parsedAlignment.characters.length} word boundaries for preloaded audio`);
+                
+                // Set up word boundary tracking
+                preloadedAudio.ontimeupdate = () => {
+                  if (onWordBoundaryRef.current && parsedAlignment.characters.length > 0) {
+                    const currentTime = preloadedAudio.currentTime;
+                    const wordIndex = parsedAlignment.character_start_times_seconds.findIndex((startTime, i) => {
+                      const endTime = parsedAlignment.character_end_times_seconds[i];
+                      return currentTime >= startTime && currentTime < endTime;
+                    });
+                    
+                    if (wordIndex >= 0) {
+                      const word = parsedAlignment.characters[wordIndex];
+                      if (word) onWordBoundaryRef.current(word);
+                    }
                   }
-                }
-              };
+                };
+              }
             }
           })
           .catch(err => console.warn('[useTTS] Failed to load metadata:', err));

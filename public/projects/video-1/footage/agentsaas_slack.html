@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slack Notification</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./agentsaas_styles.css" />
+</head>
+
+<body>
+    <div class="screen-multi">
+        <div class="slack-notification" id="slack" style="opacity: 0; transform: translateX(100px);">
+            <div class="slack-icon"></div>
+            <div class="slack-content">
+                <div class="slack-header">
+                    <div class="slack-title">Slack • #investments</div>
+                    <div class="slack-time">Just now</div>
+                </div>
+                <div class="slack-text"><b>AgentSaaS:</b> Analysis complete. Report uploaded. 🚀</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const slack = document.getElementById('slack');
+        let hasAnimated = false;
+
+        function startAnimation() {
+            if (hasAnimated) return;
+            hasAnimated = true;
+            
+            setTimeout(() => {
+                slack.style.opacity = '1';
+                slack.style.transform = 'translateX(0)';
+            }, 100);
+        }
+
+        if (window.location.search.includes('autoplay=false')) {
+            window.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'play') {
+                    startAnimation();
+                }
+            });
+        } else {
+            startAnimation();
+        }
+    </script>
+</body>
+
+</html>
