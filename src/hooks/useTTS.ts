@@ -5,16 +5,18 @@ interface UseTTSProps {
   clip?: VideoClip;
   projectId?: string;
   clipIndex?: number;
+  preloadedAudio?: HTMLAudioElement;
   onWordBoundary?: (word: string) => void;
   onEnd?: () => void;
 }
 
-export function useTTS({ clip, projectId, clipIndex, onWordBoundary, onEnd }: UseTTSProps = {}) {
+export function useTTS({ clip, projectId, clipIndex, preloadedAudio, onWordBoundary, onEnd }: UseTTSProps = {}) {
   const [alignment, setAlignment] = useState<AudioAlignment | null>(null);
   const [duration, setDuration] = useState(0);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
-
+  const [isLoading, setIsLoading] = useState(false);
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const onWordBoundaryRef = useRef(onWordBoundary);
   const onEndRef = useRef(onEnd);
@@ -28,10 +30,28 @@ export function useTTS({ clip, projectId, clipIndex, onWordBoundary, onEnd }: Us
   const stop = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current = null;
+      audioRef.current.currentTime = 0;
     }
     setIsSpeaking(false);
   }, []);
+
+  const cleanup = useCallback(() => {
+    stop();
+    // Don't revoke preloaded audio URLs
+    if (currentUrlRef.current && !preloadedAudio) {
+      URL.revokeObjectURL(currentUrlRef.current);
+      currentUrlRef.current = null;
+    }
+    if (audioRef.current && !preloadedAudio) {
+      audioRef.current.src = '';
+      audioRef.current = null;
+    }
+    if (!preloadedAudio) {
+      setAudio(null);
+      setAlignment(null);
+      setDuration(0);
+    }
+  }, [stop, preloadedAudio]);
 
   const loadResource = useCallback(async (pId: string, cIdx: number, speech?: string, options?: { voice?: string }) => {
     let isMounted = true;
@@ -39,157 +59,292 @@ export function useTTS({ clip, projectId, clipIndex, onWordBoundary, onEnd }: Us
 
     try {
       if (!speech || !speech.trim()) return null;
-      const audioPath = `/audio/${pId}/${cIdx}.mp3`;
-      const jsonPath = `/audio/${pId}/${cIdx}.json`;
 
-      // 1. Try static
+      setIsLoading(true);
+      cleanup(); // Clean up previous resources
+
+      const audioPath = `/projects/${pId}/audio/${cIdx}.mp3`;
+      const jsonPath = `/projects/${pId}/audio/${cIdx}.json`;
+
+      console.log(`[useTTS] Loading audio from ${audioPath}`);
+
+      // Try to load static audio file
       const audioRes = await fetch(audioPath);
+      if (audioRes.ok && !isMounted) return null;
+
       if (audioRes.ok) {
-        // ... existing static load logic
         const blob = await audioRes.blob();
         objectUrl = URL.createObjectURL(blob);
+        
         const newAudio = new Audio(objectUrl);
-
-        await new Promise((resolve) => {
-          newAudio.onloadedmetadata = () => resolve(true);
-          newAudio.onerror = () => resolve(false);
+        
+        await new Promise<void>((resolve, reject) => {
+          newAudio.onloadedmetadata = () => {
+            if (!isMounted) {
+              reject(new Error('Component unmounted'));
+              return;
+            }
+            resolve();
+          };
+          newAudio.onerror = () => reject(new Error('Audio load failed'));
         });
+
+        if (!isMounted) return null;
 
         setDuration(newAudio.duration);
         setAudio(newAudio);
         audioRef.current = newAudio;
         currentUrlRef.current = objectUrl;
 
-        const metaRes = await fetch(jsonPath);
-        if (metaRes.ok) {
-          const data = await metaRes.json();
-          const parsedAlignment: AudioAlignment = {
-            characters: [],
-            character_start_times_seconds: [],
-            character_end_times_seconds: []
-          };
-
-          if (Array.isArray(data)) {
-            data.forEach((item: any) => {
-              const entry = item.Metadata?.[0]?.Data || item;
-              if (entry.Type === 'WordBoundary' || item.Type === 'WordBoundary') {
-                const evt = entry.Type === 'WordBoundary' ? entry : item;
-                const start = evt.Offset / 10000000;
-                const dur = evt.Duration / 10000000;
-                parsedAlignment.characters.push(evt.text?.Text || '');
-                parsedAlignment.character_start_times_seconds.push(start);
-                parsedAlignment.character_end_times_seconds.push(start + dur);
-              }
-            });
-            setAlignment(parsedAlignment);
-
-            newAudio.ontimeupdate = () => {
-              if (onWordBoundaryRef.current) {
-                const currentTime = newAudio.currentTime;
-                const word = parsedAlignment.characters.find((_, i) => {
-                  return currentTime >= parsedAlignment.character_start_times_seconds[i] &&
-                    currentTime < parsedAlignment.character_end_times_seconds[i];
-                });
-                if (word) onWordBoundaryRef.current(word);
-              }
+        // Load metadata for word boundaries
+        try {
+          const metaRes = await fetch(jsonPath);
+          if (metaRes.ok) {
+            const data = await metaRes.json();
+            const parsedAlignment: AudioAlignment = {
+              characters: [],
+              character_start_times_seconds: [],
+              character_end_times_seconds: []
             };
+
+            if (Array.isArray(data)) {
+              data.forEach((item: any) => {
+                const entry = item.Metadata?.[0]?.Data || item;
+                if (entry.Type === 'WordBoundary' || item.Type === 'WordBoundary') {
+                  const evt = entry.Type === 'WordBoundary' ? entry : item;
+                  const start = evt.Offset / 10000000; // Convert from 100ns to seconds
+                  const dur = evt.Duration / 10000000;
+                  
+                  parsedAlignment.characters.push(evt.text?.Text || evt.Text || '');
+                  parsedAlignment.character_start_times_seconds.push(start);
+                  parsedAlignment.character_end_times_seconds.push(start + dur);
+                }
+              });
+
+              if (isMounted) {
+                setAlignment(parsedAlignment);
+                
+                // Set up word boundary tracking
+                newAudio.ontimeupdate = () => {
+                  if (onWordBoundaryRef.current && parsedAlignment.characters.length > 0) {
+                    const currentTime = newAudio.currentTime;
+                    const wordIndex = parsedAlignment.character_start_times_seconds.findIndex((startTime, i) => {
+                      const endTime = parsedAlignment.character_end_times_seconds[i];
+                      return currentTime >= startTime && currentTime < endTime;
+                    });
+                    
+                    if (wordIndex >= 0) {
+                      const word = parsedAlignment.characters[wordIndex];
+                      if (word) onWordBoundaryRef.current(word);
+                    }
+                  }
+                };
+              }
+            }
           }
+        } catch (metaErr) {
+          console.warn('[useTTS] Failed to load metadata:', metaErr);
         }
 
+        // Set up end handler
         newAudio.onended = () => {
           setIsSpeaking(false);
           onEndRef.current?.();
         };
 
+        console.log(`[useTTS] Audio loaded successfully, duration: ${newAudio.duration}s`);
         return newAudio;
-      }
-
-      // 2. Fallback
-      const response = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: speech,
-          voice: options?.voice
-        }),
-      });
-      if (response.ok) {
-        const blob = await response.blob();
-        objectUrl = URL.createObjectURL(blob);
-        const fallbackAudio = new Audio(objectUrl);
-        await new Promise((resolve) => {
-          fallbackAudio.onloadedmetadata = () => resolve(true);
-          fallbackAudio.onerror = () => resolve(false);
-        });
-        setDuration(fallbackAudio.duration);
-        setAudio(fallbackAudio);
-        audioRef.current = fallbackAudio;
-        currentUrlRef.current = objectUrl;
-
-        fallbackAudio.onended = () => {
-          setIsSpeaking(false);
-          onEndRef.current?.();
-        };
-        return fallbackAudio;
-      }
-    } catch (e) {
-      console.warn("Resource load failed", e);
-    }
-    return null;
-  }, []);
-
-  // Get combined speech text from clip
-  const getCombinedSpeech = useCallback((clip: VideoClip): string => {
-    if (clip.docSegments && clip.docSegments.length > 0) {
-      // For docSegments, combine all speech segments
-      return clip.docSegments.map(segment => segment.speech).join(' ');
-    }
-    return clip.speech || '';
-  }, []);
-
-  // Sync mode (for App.tsx)
-  useEffect(() => {
-    if (clip && projectId && clipIndex !== undefined) {
-      const combinedSpeech = getCombinedSpeech(clip);
-      if (!combinedSpeech.trim()) {
-        stop();
-        setAlignment(null);
-        setDuration(0);
-        setAudio(null);
       } else {
-        loadResource(projectId, clipIndex, combinedSpeech, {
-          voice: clip.voice
+        // If static file doesn't exist, try generating via TTS API
+        console.log(`[useTTS] Static audio not found, trying TTS generation...`);
+        
+        const ttsResponse = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: speech,
+            voice: options?.voice,
+            rate: '+0%',
+            pitch: '+0Hz'
+          })
         });
-      }
-    }
-    return () => {
-      stop();
-      if (currentUrlRef.current) URL.revokeObjectURL(currentUrlRef.current);
-    };
-  }, [clip, projectId, clipIndex, loadResource, stop, getCombinedSpeech]);
 
-  // Imperative mode (for user snippet compliance)
-  const speak = useCallback(async (text: string, options?: { projectId?: string, stepIndex?: number }) => {
-    stop();
-    setIsSpeaking(true);
-    const audioObj = await loadResource(
-      options?.projectId || projectId || 'default',
-      options?.stepIndex ?? clipIndex ?? 0,
-      text
-    );
-    if (audioObj) {
-      audioObj.play().catch(e => console.error("Speak failed", e));
-    } else {
+        if (ttsResponse.ok && isMounted) {
+          const audioBlob = await ttsResponse.blob();
+          objectUrl = URL.createObjectURL(audioBlob);
+          
+          const newAudio = new Audio(objectUrl);
+          
+          await new Promise<void>((resolve, reject) => {
+            newAudio.onloadedmetadata = () => {
+              if (!isMounted) {
+                reject(new Error('Component unmounted'));
+                return;
+              }
+              resolve();
+            };
+            newAudio.onerror = () => reject(new Error('TTS Audio load failed'));
+          });
+
+          if (!isMounted) return null;
+
+          setDuration(newAudio.duration);
+          setAudio(newAudio);
+          audioRef.current = newAudio;
+          currentUrlRef.current = objectUrl;
+
+          newAudio.onended = () => {
+            setIsSpeaking(false);
+            onEndRef.current?.();
+          };
+
+          console.log(`[useTTS] TTS audio generated successfully, duration: ${newAudio.duration}s`);
+          return newAudio;
+        }
+      }
+
+      throw new Error('Failed to load or generate audio');
+
+    } catch (error) {
+      console.error('[useTTS] Error loading audio:', error);
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+      return null;
+    } finally {
+      if (isMounted) {
+        setIsLoading(false);
+      }
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [cleanup]);
+
+  const speak = useCallback(async () => {
+    if (!audioRef.current) return false;
+    
+    try {
+      setIsSpeaking(true);
+      audioRef.current.currentTime = 0;
+      await audioRef.current.play();
+      return true;
+    } catch (error) {
+      console.error('[useTTS] Error playing audio:', error);
+      setIsSpeaking(false);
+      return false;
+    }
+  }, []);
+
+  const pause = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
       setIsSpeaking(false);
     }
-  }, [loadResource, stop, projectId, clipIndex]);
+  }, []);
+
+  const resume = useCallback(async () => {
+    if (!audioRef.current) return false;
+    
+    try {
+      setIsSpeaking(true);
+      await audioRef.current.play();
+      return true;
+    } catch (error) {
+      console.error('[useTTS] Error resuming audio:', error);
+      setIsSpeaking(false);
+      return false;
+    }
+  }, []);
+
+  // Auto-load when clip changes
+  useEffect(() => {
+    // If we have preloaded audio, use it directly
+    if (preloadedAudio && clipIndex !== undefined) {
+      console.log(`[useTTS] Using preloaded audio for clip ${clipIndex}`);
+      setAudio(preloadedAudio);
+      audioRef.current = preloadedAudio;
+      setDuration(preloadedAudio.duration);
+      
+      // Set up end handler
+      preloadedAudio.onended = () => {
+        setIsSpeaking(false);
+        onEndRef.current?.();
+      };
+      
+      // Try to load metadata
+      if (projectId !== undefined && clipIndex !== undefined) {
+        const jsonPath = `/projects/${projectId}/audio/${clipIndex}.json`;
+        fetch(jsonPath)
+          .then(res => res.ok ? res.json() : null)
+          .then(data => {
+            if (data && Array.isArray(data)) {
+              const parsedAlignment: AudioAlignment = {
+                characters: [],
+                character_start_times_seconds: [],
+                character_end_times_seconds: []
+              };
+
+              data.forEach((item: any) => {
+                const entry = item.Metadata?.[0]?.Data || item;
+                if (entry.Type === 'WordBoundary' || item.Type === 'WordBoundary') {
+                  const evt = entry.Type === 'WordBoundary' ? entry : item;
+                  const start = evt.Offset / 10000000;
+                  const dur = evt.Duration / 10000000;
+                  
+                  parsedAlignment.characters.push(evt.text?.Text || evt.Text || '');
+                  parsedAlignment.character_start_times_seconds.push(start);
+                  parsedAlignment.character_end_times_seconds.push(start + dur);
+                }
+              });
+
+              setAlignment(parsedAlignment);
+              
+              // Set up word boundary tracking
+              preloadedAudio.ontimeupdate = () => {
+                if (onWordBoundaryRef.current && parsedAlignment.characters.length > 0) {
+                  const currentTime = preloadedAudio.currentTime;
+                  const wordIndex = parsedAlignment.character_start_times_seconds.findIndex((startTime, i) => {
+                    const endTime = parsedAlignment.character_end_times_seconds[i];
+                    return currentTime >= startTime && currentTime < endTime;
+                  });
+                  
+                  if (wordIndex >= 0) {
+                    const word = parsedAlignment.characters[wordIndex];
+                    if (word) onWordBoundaryRef.current(word);
+                  }
+                }
+              };
+            }
+          })
+          .catch(err => console.warn('[useTTS] Failed to load metadata:', err));
+      }
+      
+      return;
+    }
+    
+    // Fallback to loading audio if not preloaded
+    if (projectId !== undefined && clipIndex !== undefined && clip?.speech) {
+      loadResource(projectId, clipIndex, clip.speech, { voice: clip.voice });
+    }
+  }, [projectId, clipIndex, clip?.speech, clip?.voice, preloadedAudio, loadResource]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return cleanup;
+  }, [cleanup]);
 
   return {
     alignment,
     duration,
     audio,
     isSpeaking,
+    isLoading,
     speak,
-    stop
+    pause,
+    resume,
+    stop,
+    loadResource,
+    cleanup
   };
 }

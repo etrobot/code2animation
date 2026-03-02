@@ -8,3 +8,4 @@ coverage/
 !.env.example
 public/video/
 public/audio/
+public/projects/video-1/audio/

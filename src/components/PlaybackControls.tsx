@@ -1,0 +1,138 @@
+import React from 'react';
+import { Play, Pause, Monitor, Smartphone, SkipForward, SkipBack, RotateCcw, Wand2 } from 'lucide-react';
+
+interface PlaybackControlsProps {
+  // Project and state
+  projects: Record<string, any>;
+  activeProject: string;
+  isGenerating: boolean;
+  
+  // Playback state
+  isPlaying: boolean;
+  currentClipIndex: number;
+  currentTime: number;
+  clipDuration: number;
+  totalClips: number;
+  
+  // UI state
+  isPortrait: boolean;
+  disableTransitions: boolean;
+  
+  // Event handlers
+  onProjectChange: (projectId: string) => void;
+  onTogglePlay: () => void;
+  onNextClip: () => void;
+  onPrevClip: () => void;
+  onReset: () => void;
+  onToggleOrientation: () => void;
+  onToggleTransitions: () => void;
+}
+
+export default function PlaybackControls({
+  projects,
+  activeProject,
+  isGenerating,
+  isPlaying,
+  currentClipIndex,
+  currentTime,
+  clipDuration,
+  totalClips,
+  isPortrait,
+  disableTransitions,
+  onProjectChange,
+  onTogglePlay,
+  onNextClip,
+  onPrevClip,
+  onReset,
+  onToggleOrientation,
+  onToggleTransitions
+}: PlaybackControlsProps) {
+  return (
+    <div className="h-16 bg-zinc-900 border-t border-zinc-800 flex items-center px-6 justify-between w-full shrink-0">
+      {/* Left Controls */}
+      <div className="flex items-center space-x-4">
+        <select
+          value={activeProject}
+          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+            onProjectChange(e.target.value);
+          }}
+          className="bg-zinc-800 text-sm font-bold text-white border border-white/10 rounded px-2 py-1 cursor-pointer hover:border-[#00FF00] transition-colors outline-none"
+        >
+          {Object.keys(projects).map(id => (
+            <option key={id} value={id}>{id}</option>
+          ))}
+        </select>
+
+        {isGenerating && (
+          <div className="flex items-center space-x-2 text-[#00FF00] text-xs">
+            <div className="animate-spin w-3 h-3 border border-[#00FF00] border-t-transparent rounded-full"></div>
+            <span>Generating Audio...</span>
+          </div>
+        )}
+
+        <button
+          onClick={onToggleOrientation}
+          className="p-2 rounded hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+          title={isPortrait ? "Switch to Landscape" : "Switch to Portrait"}
+        >
+          {isPortrait ? <Monitor size={18} /> : <Smartphone size={18} />}
+        </button>
+
+        <button
+          onClick={onToggleTransitions}
+          className={`p-2 rounded transition-colors ${
+            disableTransitions 
+              ? 'bg-red-600/20 text-red-500 hover:bg-red-600/30' 
+              : 'hover:bg-white/10 text-zinc-400 hover:text-white'
+          }`}
+          title={disableTransitions ? "Enable Transitions" : "Disable Transitions"}
+        >
+          <Wand2 size={18} className={disableTransitions ? 'opacity-50' : ''} />
+        </button>
+      </div>
+
+      {/* Center Playback Controls */}
+      <div className="flex items-center space-x-4 absolute left-1/2 transform -translate-x-1/2">
+        <button 
+          onClick={onPrevClip} 
+          className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+        >
+          <SkipBack size={20} />
+        </button>
+
+        <button
+          onClick={onTogglePlay}
+          className="flex items-center justify-center w-10 h-10 bg-white text-black rounded-full hover:bg-[#00FF00] hover:scale-105 transition-all"
+        >
+          {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-1" />}
+        </button>
+
+        <button 
+          onClick={onNextClip} 
+          className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+        >
+          <SkipForward size={20} />
+        </button>
+      </div>
+
+      {/* Right Info & Reset */}
+      <div className="flex items-center space-x-6">
+        <div className="flex flex-col text-right">
+          <span className="text-[10px] font-mono text-zinc-500 uppercase font-bold">
+            Clip {currentClipIndex + 1}/{totalClips}
+          </span>
+          <span className="text-sm font-mono text-[#00FF00]">
+            {currentTime.toFixed(2)}s / {clipDuration.toFixed(2)}s
+          </span>
+        </div>
+        
+        <button 
+          onClick={onReset}
+          className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 transition-colors rounded text-sm font-medium flex items-center gap-2 text-zinc-300 hover:text-white"
+        >
+          <RotateCcw size={14} /> Reset
+        </button>
+      </div>
+    </div>
+  );
+}

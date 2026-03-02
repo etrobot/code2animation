@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>agentsaas Intro - Toggle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./agentsaas_styles.css" />
+</head>
+
+<body class="camera-down">
+    <div class="search-section">
+        <div id="search-title" class="search-title">How can I help you today?</div>
+        <div id="toggle-container" class="toggle-container">
+            <div id="toggle-pill" class="toggle-pill"></div>
+            <div class="toggle-option active-text" id="opt-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                Ask
+            </div>
+            <div class="toggle-option" id="opt-computer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                Computer
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const toggleContainer = document.getElementById('toggle-container');
+        const searchTitle = document.getElementById('search-title');
+        const togglePill = document.getElementById('toggle-pill');
+        const optSearch = document.getElementById('opt-search');
+        const optComputer = document.getElementById('opt-computer');
+
+        function startAnimation() {
+            setTimeout(() => {
+                searchTitle.style.opacity = '1';
+                searchTitle.style.transform = 'translateY(0)';
+
+                setTimeout(() => {
+                    toggleContainer.style.opacity = '1';
+                    toggleContainer.style.transform = 'translateY(0) scale(1)';
+
+                    setTimeout(() => {
+                        togglePill.classList.add('active');
+                        optSearch.classList.remove('active-text');
+                        optComputer.classList.add('active-text');
+                    }, 400);
+                }, 300);
+            }, 100);
+        }
+
+        if (window.location.search.includes('autoplay=false')) {
+            window.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'play') {
+                    startAnimation();
+                }
+            });
+        } else {
+            startAnimation();
+        }
+    </script>
+</body>
+
+</html>

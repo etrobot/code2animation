@@ -1,5 +1,5 @@
 {
-  "name": "Code2Animation",
-  "description": "A video generation project that renders code-based animations for ffmpeg synthesis.",
+  "name": "AgentSaaS Video Editor",
+  "description": "A video clip preview tool to preview and export videos.",
   "requestFramePermissions": []
 }

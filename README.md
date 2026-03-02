@@ -1,170 +1,130 @@
-# Code2Animation
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
 
-A code-based video generation project that provides video materials for FFmpeg composition by rendering code animations.
+# AgentSaaS Video Editor
 
-## Project Overview
+A powerful video editor with TTS (Text-to-Speech) and automated rendering capabilities.
 
-Code2Animation is an alternertive to Replit Animaiton and Remotion.
+View your app in AI Studio: https://ai.studio/apps/2c282826-7ff3-43c4-8c36-273d06d1c4ff
 
-https://github.com/user-attachments/assets/2659aa26-b093-48d6-8e53-c6bb8b899750
+## Features
 
-
-## Key Features
-
-- 🎬 **Multiple Clip Types**: Support for code display, fullscreen video, typography animation, split-screen display, and chatbot interface
-- 🎨 **Theme Customization**: Support for dark, light, and neon themes
-- 🗣️ **Text-to-Speech**: Integrated TTS functionality with customizable voice parameters
-- 🎵 **Media Integration**: Support for various media types including video, images, and code
-- ⚡ **Real-time Rendering**: High-performance real-time rendering based on React
-
-## Tech Stack
-
-- **Frontend Framework**: React 19 + TypeScript
-- **Build Tool**: Vite
-- **Styling Framework**: Tailwind CSS
-- **Animation Library**: Motion
-- **Text-to-Speech**: Microsoft Edge TTS
-- **Backend Service**: Vite
-- **Rendering Scripts**: Puppeteer frame-by-frame rendering with FFmpeg composition
+- Interactive video preview with playback controls
+- TTS audio generation using Microsoft Edge TTS
+- Automated video rendering with Puppeteer and FFmpeg
+- Support for transitions, media clips, and timing
+- Portrait and landscape orientations
+- Frame-by-frame rendering at 30 FPS
 
 ## Quick Start
 
-### Prerequisites
+**Prerequisites:** Node.js 18+, FFmpeg
 
-- Node.js >= 18
-- pnpm >= 10.14.0
+1. Install dependencies:
+   ```bash
+   pnpm install
+   ```
 
-### Install Dependencies
+2. Generate TTS audio:
+   ```bash
+   pnpm generate-audio video-1
+   ```
 
+3. Run the preview:
+   ```bash
+   pnpm dev
+   ```
+
+4. Render the final video:
+   ```bash
+   pnpm render video-1
+   ```
+
+## Commands
+
+### Development
 ```bash
-pnpm install
+pnpm dev              # Start dev server
+pnpm build            # Build for production
+pnpm preview          # Preview production build
 ```
 
-### Development Mode
-
+### Audio Generation
 ```bash
-pnpm dev
+pnpm generate-audio <projectId>
 ```
-
-The application will start at http://localhost:3000
-
-### Build for Production
-
-```bash
-pnpm build
-```
-
-### Preview Production Build
-
-```bash
-pnpm preview
-```
+Generates TTS audio files for all speech clips in a project.
 
 ### Video Rendering
-
 ```bash
-# Render a specific project (e.g., video-1)
-pnpm render:video-1
+pnpm render <projectId> [--portrait]
+```
+Renders the complete video with audio to MP4.
 
-# Render any project with custom parameters
-pnpm render <projectId> --script <script> --port <port>
+Examples:
+```bash
+pnpm render video-1              # Landscape (1920x1080)
+pnpm render video-1 --portrait   # Portrait (1080x1920)
 ```
 
 ## Project Structure
 
 ```
-code2animation/
-├── src/
-│   ├── components/          # React components
-│   ├── hooks/              # Custom hooks
-│   ├── projects/           # Project configurations
-│   ├── App.tsx             # Main app component
-│   ├── main.tsx            # App entry point
-│   └── types.ts            # TypeScript type definitions
+├── public/
+│   ├── projects/          # Video project definitions
+│   │   └── video-1/
+│   │       ├── video-1.json
+│   │       └── footage/   # HTML media components
+│   ├── audio/             # Generated TTS audio files
+│   └── video/             # Rendered output videos
 ├── scripts/
-│   ├── generate-audio.ts   # Audio generation script
-│   └── render.js           # Rendering script
-├── public/                 # Static assets
-│   ├──audio/               # Static assets
-│   ├──footage/             # Static assets
-│   └──script/              # video scripts, use url param to switch
+│   ├── generate-audio.ts  # TTS generation script
+│   └── render.js          # Video rendering script
+└── src/
+    ├── App.tsx            # Main application
+    ├── components/        # React components
+    └── hooks/             # Custom hooks (useTTS)
 ```
 
-## Core Types
+## Installing FFmpeg
 
-### VideoClip
-
-The core data structure for video clips:
-
-```typescript
-interface VideoClip {
-  type: ClipType;
-  title?: string;
-  subtitle?: string;
-  speech: string;
-  media?: MediaItem[];
-  duration?: number;
-  theme?: 'dark' | 'light' | 'neon';
-  voice?: string;
-  rate?: string;
-  pitch?: string;
-}
-```
-
-### Clip Types
-
-- `footagesAroundTitle`: Footages around title
-- `footagesFullScreen`: Fullscreen footages
-
-## Development Guide
-
-### Adding New Clip Types
-
-1. Extend the `ClipType` type in `src/types.ts`
-2. Create the corresponding render component in `src/components/`
-3. Register the new component in `src/App.tsx`
-
-### Custom Themes
-
-Use the `theme` property in components to apply different visual styles:
-
-```typescript
-const theme = clip.theme || 'dark';
-```
-
-## Scripts Documentation
-
-### generate-audio.ts
-
-Responsible for generating text-to-speech audio, supporting:
-- Text-to-speech conversion
-- Audio timeline alignment
-- Multiple voice parameter configurations
-
-### render.js
-
-Video rendering engine that handles:
-- Video frame rendering
-- Media file composition
-- FFmpeg integration
-
-Usage:
-
+### macOS
 ```bash
-# Direct script usage
-node scripts/render.js <projectId> --script <script> --port <port>
-
-# PNPM commands (recommended)
-pnpm render <projectId> --script <script> --port <port>
-pnpm render:video-1  # Pre-configured command for video-1 project
+brew install ffmpeg
 ```
 
-Output:
-- `public/video/render-<projectId>.mp4`
+### Linux
+```bash
+sudo apt-get install ffmpeg
+```
 
-Notes:
-- Requires FFmpeg installed and a system Chrome/Chromium browser available (or set `PUPPETEER_EXECUTABLE_PATH`).
+### Windows
+Download from https://ffmpeg.org/download.html
 
-## License
+## Troubleshooting
 
-MIT
+### Puppeteer browser issues
+Set the browser path:
+```bash
+export PUPPETEER_EXECUTABLE_PATH=/path/to/chrome
+```
+
+Or install Chromium:
+```bash
+npx puppeteer browsers install chrome
+```
+
+### Audio not playing
+Make sure to generate audio first:
+```bash
+pnpm generate-audio video-1
+```
+
+Then refresh the browser.
+
+## Learn More
+
+- [Scripts Documentation](./scripts/README.md)
+- [Components Documentation](./src/components/README.md)
+- [Hooks Documentation](./src/hooks/README.md)

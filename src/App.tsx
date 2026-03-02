@@ -1,339 +1,463 @@
-import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
-import { FootageClip } from './components/FootageClip';
-import { DocSpot } from './components/DocSpot';
-import { Tweet } from './components/Tweet';
-import { Play, Pause, RefreshCw, SkipForward, SkipBack, Smartphone, Monitor } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import PlaybackControls from './components/PlaybackControls';
 import { useTTS } from './hooks/useTTS';
-import { Project, VideoClip } from './types';
+import { VideoClip } from './types';
 
-// Add type definition for window.seekTo
-declare global {
-  interface Window {
-    seekTo: (time: number) => void;
-    setClipIndex: (index: number) => void;
-    projectsFromScript?: Record<string, Project>;
+const WORD_DURATION = 0.5;
+
+function processClips(project: any) {
+  return project.clips.map((clip: any, index: number) => {
+    if (clip.type === 'transition') {
+      return {
+        ...clip,
+        duration: clip.duration || 0.5,
+        originalIndex: index
+      };
+    } else {
+      const words = (clip.speech || '').split(/\s+/);
+      const duration = clip.duration || Math.max(2, words.length * WORD_DURATION);
+      
+      const calculatedMedia: any[] = [];
+      
+      for (let i = 0; i < (clip.media || []).length; i++) {
+        const m = clip.media[i];
+        if (m.type === 'transition') {
+          calculatedMedia.push({
+            ...m,
+            isTransition: true,
+          });
+        } else {
+          let mStartTime = 0;
+          if (m.words && m.words.length > 0) {
+            const targetWord = m.words[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+            const wordIndex = words.findIndex((w: string) => w.toLowerCase().replace(/[^a-z0-9]/g, '') === targetWord);
+            if (wordIndex !== -1) {
+              mStartTime = wordIndex * WORD_DURATION;
+            }
+          }
+          calculatedMedia.push({
+            ...m,
+            id: `media-${index}-${i}`,
+            isTransition: false,
+            startTime: mStartTime,
+          });
+        }
+      }
+      
+      for (let i = 0; i < calculatedMedia.length; i++) {
+        if (calculatedMedia[i].isTransition) {
+          const nextMedia = calculatedMedia[i+1];
+          if (nextMedia) {
+            const transDuration = calculatedMedia[i].duration || 0.5;
+            calculatedMedia[i].startTime = nextMedia.startTime - transDuration;
+            calculatedMedia[i].endTime = nextMedia.startTime;
+          }
+        }
+      }
+
+      return {
+        ...clip,
+        duration,
+        calculatedMedia,
+        originalIndex: index
+      };
+    }
+  });
+}
+
+function getCurrentRenderState(clipIndex: number, localTime: number, clips: any[], disableTransitions: boolean) {
+  const clip = clips[clipIndex];
+  if (!clip) return { activeMedias: [] };
+
+  if (clip.type === 'transition') {
+    if (disableTransitions) {
+        const nextClip = clips[clipIndex + 1];
+        const nextMedia = nextClip?.calculatedMedia?.find((m: any) => !m.isTransition) || null;
+        return {
+            activeMedias: nextMedia ? [{ media: nextMedia, style: {} }] : []
+        };
+    }
+
+    const prevClip = clips[clipIndex - 1];
+    const nextClip = clips[clipIndex + 1];
+    
+    const prevMedia = prevClip?.calculatedMedia?.filter((m: any) => !m.isTransition).pop() || null;
+    const nextMedia = nextClip?.calculatedMedia?.find((m: any) => !m.isTransition) || null;
+    
+    const progress = Math.min(Math.max(localTime / clip.duration, 0), 1);
+    const styles = getTransitionStyles(clip.transitionType, progress);
+    
+    const activeMedias = [];
+    if (prevMedia) activeMedias.push({ media: prevMedia, style: styles.from });
+    if (nextMedia) activeMedias.push({ media: nextMedia, style: styles.to });
+    
+    return { activeMedias };
+  } else {
+    const medias = clip.calculatedMedia || [];
+    const startedMedias = medias.filter((m: any) => !m.isTransition && m.startTime <= localTime);
+    const activeMedia = startedMedias[startedMedias.length - 1] || medias.find((m: any) => !m.isTransition);
+    
+    const activeTransition = medias.find((m: any) => m.isTransition && localTime >= m.startTime && localTime <= m.endTime);
+    
+    if (activeTransition && !disableTransitions) {
+       const nextMediaIndex = medias.indexOf(activeTransition) + 1;
+       const nextMedia = medias[nextMediaIndex];
+       const prevMediaIndex = medias.indexOf(activeTransition) - 1;
+       const prevMedia = medias[prevMediaIndex];
+       
+       const progress = Math.min(Math.max((localTime - activeTransition.startTime) / (activeTransition.endTime - activeTransition.startTime), 0), 1);
+       const styles = getTransitionStyles(activeTransition.transitionType, progress);
+       
+       const activeMedias = [];
+       if (prevMedia) activeMedias.push({ media: prevMedia, style: styles.from });
+       if (nextMedia) activeMedias.push({ media: nextMedia, style: styles.to });
+       
+       return { activeMedias };
+    }
+    
+    return {
+      activeMedias: activeMedia ? [{ media: activeMedia, style: {} }] : []
+    };
   }
 }
 
-export default function App() {
-  const [isPortrait, setIsPortrait] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return new URLSearchParams(window.location.search).get('portrait') === 'true';
-  });
-  const STAGE_WIDTH = isPortrait ? 1080 : 1920;
-  const STAGE_HEIGHT = isPortrait ? 1920 : 1080;
-  const isRecordMode = new URLSearchParams(window.location.search).get('record') === 'true' ||
-    (typeof window !== 'undefined' && window.self !== window.top);
+function getTransitionStyles(type: string, progress: number): any {
+  switch (type) {
+    case 'fade':
+      return {
+        from: { opacity: 1 - progress },
+        to: { opacity: progress }
+      };
+    case 'slideUp':
+      return {
+        from: { transform: `translateY(-${progress * 100}%)`, opacity: 1 - progress },
+        to: { transform: `translateY(${100 - progress * 100}%)`, opacity: progress }
+      };
+    case 'slideRight':
+      return {
+        from: { transform: `translateX(${progress * 100}%)`, opacity: 1 - progress },
+        to: { transform: `translateX(-${100 - progress * 100}%)`, opacity: progress }
+      };
+    case 'zoomIn':
+      return {
+        from: { opacity: 1 - progress, transform: `scale(${1 + progress * 0.5})` },
+        to: { opacity: progress, transform: `scale(${0.5 + progress * 0.5})` }
+      };
+    default:
+      return { from: { opacity: 1 - progress }, to: { opacity: progress } };
+  }
+}
 
-  const [projects, setProjects] = useState<Record<string, Project>>({});
-  const [isProjectsLoaded, setIsProjectsLoaded] = useState(false);
-  const [activeProject, setActiveProject] = useState('video-1');
-  const [currentClipIndex, setCurrentClipIndex] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [stageScale, setStageScale] = useState(1);
-
-  useLayoutEffect(() => {
-    const updateDimensions = () => {
-      if (!containerRef.current) return;
-      if (isRecordMode) {
-        setStageScale(1);
-        return;
-      }
-      const { clientWidth, clientHeight } = containerRef.current;
-
-      const scale = Math.min(clientWidth / STAGE_WIDTH, clientHeight / STAGE_HEIGHT);
-      setStageScale(Number.isFinite(scale) && scale > 0 ? scale : 1);
-    };
-
-    updateDimensions();
-    const observer = new ResizeObserver(updateDimensions);
-    if (containerRef.current) {
-      observer.observe(containerRef.current);
-    }
-    return () => observer.disconnect();
-  }, [isPortrait]);
+const MediaRenderer = ({ media, style, className = '', isPlaying }: any) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
-    if (isProjectsLoaded) return;
-    const globalAny = window as any;
-    if (globalAny.projectsFromScript) {
-      setProjects(globalAny.projectsFromScript as Record<string, Project>);
-      setIsProjectsLoaded(true);
-      return;
+    if (iframeRef.current && iframeRef.current.contentWindow) {
+      iframeRef.current.contentWindow.postMessage({ type: isPlaying ? 'play' : 'pause' }, '*');
     }
-    let isMounted = true;
+  }, [isPlaying]);
 
-    const resolveScriptUrl = () => {
-      const params = new URLSearchParams(window.location.search);
-      const raw = params.get('script');
-      if (!raw) return '/script/index.json';
+  const handleIframeLoad = () => {
+    if (iframeRef.current && iframeRef.current.contentWindow && isPlaying) {
+      iframeRef.current.contentWindow.postMessage({ type: 'play' }, '*');
+    }
+  };
 
-      const trimmed = raw.trim();
-      if (!trimmed) return '/script/index.json';
-      if (trimmed.includes('/') || trimmed.includes('\\')) return '/script/index.json';
-      if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) return '/script/index.json';
+  if (!media) return null;
+  
+  if (media.src && media.src.endsWith('.html')) {
+    const srcWithAutoplay = media.src + '?autoplay=false';
+    return (
+      <div 
+        className={`absolute inset-0 flex items-center justify-center bg-transparent ${className}`} 
+        style={{...style, willChange: 'transform, opacity'}}
+      >
+        <iframe 
+          ref={iframeRef}
+          src={srcWithAutoplay} 
+          className="w-full h-full border-none" 
+          title="Media Content"
+          sandbox="allow-scripts allow-same-origin"
+          onLoad={handleIframeLoad}
+        />
+      </div>
+    );
+  }
 
-      let filename = trimmed;
-      if (!filename.endsWith('.json')) filename = `${filename}.json`;
-      return `/script/${filename}`;
-    };
+  const name = media.src ? media.src.split('/').pop().replace('.html', '') : 'Media';
+  
+  return (
+    <div 
+      className={`absolute inset-0 flex items-center justify-center bg-slate-800 border-4 border-slate-700 m-8 rounded-2xl shadow-2xl ${className}`} 
+      style={{...style, willChange: 'transform, opacity'}}
+    >
+      <div className="text-center">
+        <div className="text-slate-400 text-sm font-mono mb-2">HTML Component</div>
+        <div className="text-white text-3xl font-bold tracking-tight">{name}</div>
+      </div>
+    </div>
+  );
+}
 
-    const applyProjectsToState = (loaded: Record<string, Project>) => {
-      setProjects(loaded);
-      const keys = Object.keys(loaded);
-      if (keys.length > 0) {
-        const urlProject = new URLSearchParams(window.location.search).get('project');
-        if (urlProject && loaded[urlProject]) {
-          setActiveProject(urlProject);
+const Player = ({ renderState, background, resetCounter, isPlaying }: any) => {
+  if (!renderState || !renderState.activeMedias) return <div className="absolute inset-0 bg-black" />;
+
+  return (
+    <div className="absolute inset-0 overflow-hidden bg-neutral-900">
+      {/* Background */}
+      <div className="absolute inset-0">
+        {background && background.endsWith('.html') ? (
+          <iframe 
+            src={background} 
+            className="w-full h-full border-none" 
+            title="Background"
+            sandbox="allow-scripts allow-same-origin"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center opacity-30">
+            <span className="text-neutral-500 font-mono text-lg">{background}</span>
+          </div>
+        )}
+      </div>
+      
+      {/* Media Layer */}
+      <div className="absolute inset-0">
+        {renderState.activeMedias.map(({ media, style }: any) => (
+          <MediaRenderer 
+            key={`${media.id}-${resetCounter}`} 
+            media={media} 
+            style={style} 
+            isPlaying={isPlaying}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
+export default function App() {
+  const [projects, setProjects] = useState<any>({});
+  const [activeProject, setActiveProject] = useState<string>('video-1');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoadingProject, setIsLoadingProject] = useState(true);
+  const [audioCache, setAudioCache] = useState<Map<string, HTMLAudioElement>>(new Map());
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  
+  // Check for render mode from URL params
+  const urlParams = new URLSearchParams(window.location.search);
+  const isRecordMode = urlParams.get('record') === 'true';
+  const urlOrientation = urlParams.get('orientation');
+  const urlProject = urlParams.get('project');
+  
+  // Override defaults if in record mode
+  const initialProject = urlProject || activeProject;
+  const initialPortrait = urlOrientation === 'portrait';
+
+  useEffect(() => {
+    if (urlProject && urlProject !== activeProject) {
+      setActiveProject(urlProject);
+    }
+  }, [urlProject]);
+
+  // Load project JSON dynamically
+  useEffect(() => {
+    const loadProject = async () => {
+      try {
+        setIsLoadingProject(true);
+        const response = await fetch(`/projects/${activeProject}/${activeProject}.json`);
+        if (response.ok) {
+          const projectData = await response.json();
+          setProjects((prev: any) => ({ ...prev, [activeProject]: projectData }));
         } else {
-          setActiveProject(prev => (loaded[prev] ? prev : keys[0]));
+          console.error(`Failed to load project ${activeProject}`);
         }
+      } catch (error) {
+        console.error('Error loading project:', error);
+      } finally {
+        setIsLoadingProject(false);
       }
     };
+    
+    if (activeProject && !projects[activeProject]) {
+      loadProject();
+    } else {
+      setIsLoadingProject(false);
+    }
+  }, [activeProject, projects]);
 
-    const fetchJson = async (src: string) => {
-      const url = `${src}${src.includes('?') ? '&' : '?'}t=${Date.now()}`;
-      const res = await fetch(url, { method: 'GET' });
-      if (!res.ok) throw new Error(`Failed to fetch projects: ${src}`);
-      return (await res.json()) as any;
-    };
+  const project = activeProject ? projects[activeProject] : null;
+  const processedClips = useMemo(() => project ? processClips(project) : [], [project]);
+  
+  const [currentClipIndex, setCurrentClipIndex] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPortrait, setIsPortrait] = useState(initialPortrait);
+  const [disableTransitions, setDisableTransitions] = useState(false);
+  const [resetCounter, setResetCounter] = useState(0);
+  
+  // Audio log for rendering
+  const audioLogRef = useRef<Array<{ file: string; startTime: number }>>([]);
 
-    const mergeProjects = (acc: Record<string, Project>, next: any) => {
-      if (!next || typeof next !== 'object') return acc;
-      const exported = (next as any).projects;
-      if (!exported || typeof exported !== 'object') return acc;
-      for (const [id, project] of Object.entries(exported as Record<string, Project>)) {
-        acc[id] = project;
-      }
-      return acc;
-    };
+  // TTS Integration - use preloaded audio from cache
+  const currentClip = processedClips[currentClipIndex] as VideoClip;
+  const shouldUseTTS = currentClip?.type !== 'transition' && currentClip?.speech;
+  
+  // Calculate the audio file index by counting non-transition clips up to and including current
+  const audioClipIndex = shouldUseTTS 
+    ? processedClips.slice(0, currentClipIndex + 1).filter(c => c.type !== 'transition').length - 1
+    : undefined;
+  
+  // Get preloaded audio from cache
+  const cachedAudio = audioClipIndex !== undefined 
+    ? audioCache.get(`${activeProject}-${audioClipIndex}`)
+    : undefined;
 
-    const loadProjectsFromScriptUrl = async (src: string) => {
-      const data = await fetchJson(src);
-
-      if (data && typeof data === 'object') {
-        if (Array.isArray((data as any).entries)) {
-          const entries = (data as any).entries as unknown[];
-          const merged: Record<string, Project> = {};
-          for (const entry of entries) {
-            if (typeof entry !== 'string') continue;
-            const trimmed = entry.trim();
-            if (!trimmed) continue;
-            if (trimmed.includes('/') || trimmed.includes('\\')) continue;
-            if (!/^[A-Za-z0-9._-]+$/.test(trimmed)) continue;
-            const entryUrl = `/script/${trimmed}`;
-            const entryData = await fetchJson(entryUrl);
-            mergeProjects(merged, entryData);
-          }
-          return merged;
-        }
-
-        const merged: Record<string, Project> = {};
-        mergeProjects(merged, data);
-        return merged;
-      }
-
-      return {} as Record<string, Project>;
-    };
-
-    const primaryUrl = resolveScriptUrl();
-    (async () => {
-      let loadedProjects: Record<string, Project> | null = null;
-      try {
-        loadedProjects = await loadProjectsFromScriptUrl(primaryUrl);
-      } catch {
-        if (primaryUrl !== '/script/index.json') {
-          try {
-            loadedProjects = await loadProjectsFromScriptUrl('/script/index.json');
-          } catch {
-          }
-        }
-      }
-
-      if (!isMounted) return;
-      if (!loadedProjects || Object.keys(loadedProjects).length === 0) loadedProjects = null;
-
-      if (loadedProjects) {
-        applyProjectsToState(loadedProjects);
-        setIsProjectsLoaded(true);
-        return;
-      }
-
-      if (primaryUrl === '/script/index.json') {
-        console.error('[projects] /script/index.json loaded but did not provide projects');
-        setProjects({});
-        setIsProjectsLoaded(true);
-        return;
-      }
-
-      try {
-        loadedProjects = await loadProjectsFromScriptUrl('/script/index.json');
-      } catch {
-      }
-
-      if (!isMounted) return;
-      if (loadedProjects && Object.keys(loadedProjects).length > 0) {
-        applyProjectsToState(loadedProjects);
-      } else {
-        console.error('[projects] Fallback /script/index.json loaded but did not provide projects');
-        setProjects({});
-      }
-      setIsProjectsLoaded(true);
-    })();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [isProjectsLoaded]);
-
-  const project: Project = projects[activeProject] || { name: activeProject, clips: [] as VideoClip[] };
-  const hasClips = project.clips.length > 0;
-  const currentClip: VideoClip | null =
-    hasClips && currentClipIndex < project.clips.length ? project.clips[currentClipIndex] : null;
-
-  // Get duration from TTS hook or override
-  const { duration: ttsDuration, audio } = useTTS({
-    clip: currentClip || undefined,
-    projectId: activeProject,
-    clipIndex: currentClipIndex
+  // Debug logging
+  useEffect(() => {
+    if (shouldUseTTS) {
+      console.log(`[App] Current clip index: ${currentClipIndex}, Audio file index: ${audioClipIndex}`);
+      console.log(`[App] Speech: ${currentClip.speech?.substring(0, 50)}...`);
+      console.log(`[App] Cached audio available: ${!!cachedAudio}`);
+    }
+  }, [currentClipIndex, audioClipIndex, shouldUseTTS, currentClip, cachedAudio]);
+  
+  const {
+    isSpeaking,
+    isLoading: isTTSLoading,
+    speak,
+    pause: pauseTTS,
+    resume: resumeTTS,
+    stop: stopTTS,
+    duration: ttsDuration
+  } = useTTS({
+    clip: shouldUseTTS ? currentClip : undefined,
+    projectId: shouldUseTTS ? activeProject : undefined,
+    clipIndex: audioClipIndex,
+    preloadedAudio: cachedAudio,
+    onWordBoundary: (word) => {
+      console.log('[TTS] Word boundary:', word);
+    },
+    onEnd: () => {
+      console.log('[TTS] Audio ended');
+      // Don't auto-advance here, let the normal clip timing handle it
+    }
   });
-
-  const clipDuration = (ttsDuration || 3);
 
   const requestRef = useRef<number>(0);
-  const previousTimeRef = useRef<number>(0);
+  const previousTimeRef = useRef<number | undefined>(undefined);
+  const isPlayingRef = useRef(isPlaying);
+  const isSpeakingRef = useRef(isSpeaking);
+  
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
 
-  const animate = useCallback((time: number) => {
-    if (previousTimeRef.current !== undefined) {
-      const deltaTime = (time - previousTimeRef.current) / 1000;
-
-      setCurrentTime(prevTime => {
-        const newTime = prevTime + deltaTime;
-
-        if (clipDuration > 0 && newTime >= clipDuration && hasClips) {
-          if (currentClipIndex < project.clips.length - 1) {
-            // Cap at duration while waiting for the effect to switch clips
-            return clipDuration;
-          } else {
-            setIsPlaying(false);
-            return clipDuration;
-          }
-        }
-        return newTime;
-      });
-    }
-    previousTimeRef.current = time;
-    if (isPlaying) {
-      requestRef.current = requestAnimationFrame(animate);
-    }
-  }, [isPlaying, clipDuration, currentClipIndex, project.clips.length, hasClips]);
+  const CANVAS_WIDTH = isPortrait ? 1080 : 1920;
+  const CANVAS_HEIGHT = isPortrait ? 1920 : 1080;
 
   useEffect(() => {
-    if (audio) {
-      if (isPlaying) {
-        // Sync time only when starting or if it drifts significantly
-        if (Math.abs(audio.currentTime - currentTime) > 0.3) {
-          audio.currentTime = currentTime;
-        }
-        audio.play().catch(e => console.warn("Audio play blocked", e));
-      } else {
-        audio.pause();
-      }
-    }
-  }, [isPlaying, audio]);
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
-  // Handle frame animation
+  useEffect(() => {
+    isSpeakingRef.current = isSpeaking;
+  }, [isSpeaking]);
+
+  const clipDuration = currentClip?.duration || ttsDuration || 0;
+
+  useEffect(() => {
+    const updateScale = () => {
+      if (containerRef.current) {
+        const { clientWidth, clientHeight } = containerRef.current;
+        const availableWidth = clientWidth - 64; // 32px padding on each side
+        const availableHeight = clientHeight - 64;
+        
+        const scaleX = availableWidth / CANVAS_WIDTH;
+        const scaleY = availableHeight / CANVAS_HEIGHT;
+        setScale(Math.min(scaleX, scaleY));
+      }
+    };
+
+    updateScale();
+    window.addEventListener('resize', updateScale);
+    return () => window.removeEventListener('resize', updateScale);
+  }, [isPortrait, CANVAS_WIDTH, CANVAS_HEIGHT]);
+
+  const animate = (time: number) => {
+    if (previousTimeRef.current != undefined && isPlayingRef.current) {
+      const deltaTime = (time - previousTimeRef.current) / 1000;
+      setCurrentTime((prevTime: number) => prevTime + deltaTime);
+    }
+    previousTimeRef.current = time;
+    if (isPlayingRef.current) {
+      requestRef.current = requestAnimationFrame(animate);
+    }
+  };
+
   useEffect(() => {
     if (isPlaying) {
       previousTimeRef.current = performance.now();
       requestRef.current = requestAnimationFrame(animate);
     } else {
       cancelAnimationFrame(requestRef.current);
+      previousTimeRef.current = undefined;
     }
     return () => cancelAnimationFrame(requestRef.current);
-  }, [isPlaying, animate]);
+  }, [isPlaying]);
 
-  // Handle clip switching with fade out
+  // Handle clip advancement
   useEffect(() => {
-    if (clipDuration > 0 && currentTime >= clipDuration && hasClips && !isTransitioning) {
-      if (currentClipIndex < project.clips.length - 1) {
-        setIsTransitioning(true);
-        // Start fade out, then switch clip after 300ms
-        setTimeout(() => {
-          setCurrentClipIndex(prev => prev + 1);
-          setCurrentTime(0);
-          setIsTransitioning(false);
-        }, 300);
+    if (currentTime >= clipDuration && isPlaying) {
+      if (currentClipIndex < processedClips.length - 1) {
+        let nextIndex = currentClipIndex + 1;
+        if (disableTransitions && processedClips[nextIndex].type === 'transition') {
+            nextIndex++;
+        }
+        if (nextIndex < processedClips.length) {
+            setCurrentClipIndex(nextIndex);
+            setCurrentTime(0);
+        } else {
+            setIsPlaying(false);
+            setCurrentTime(clipDuration);
+        }
       } else {
         setIsPlaying(false);
+        setCurrentTime(clipDuration);
       }
     }
-  }, [currentTime, clipDuration, currentClipIndex, project.clips.length, hasClips, isTransitioning]);
-
-  // Expose seekTo for headless rendering
-  useEffect(() => {
-    window.seekTo = (time: number) => {
-      setIsPlaying(false);
-      setCurrentTime(time);
-    };
-    window.setClipIndex = (index: number) => {
-      setIsPlaying(false);
-      setCurrentClipIndex(index);
-      setCurrentTime(0);
-    };
-  }, []);
+  }, [currentTime, clipDuration, isPlaying, currentClipIndex, processedClips, disableTransitions]);
 
   // Check if audio exists, if not generate it
   useEffect(() => {
     const checkAudio = async () => {
+      if (!project) return;
+      
       try {
-        const projectClips = projects[activeProject]?.clips || [];
-        const hasAnySpeech = projectClips.some(c => {
-          // Check legacy speech field
-          if (typeof c?.speech === 'string' && c.speech.trim().length > 0) {
-            return true;
-          }
-          // Check new docSegments structure
-          if (c?.docSegments && Array.isArray(c.docSegments)) {
-            return c.docSegments.some(segment =>
-              typeof segment?.speech === 'string' && segment.speech.trim().length > 0
-            );
-          }
-          return false;
-        });
-        if (!hasAnySpeech) {
+        const projectClips = project.clips || [];
+        const speechClips = projectClips.filter((c: any) => 
+          c.type !== 'transition' && typeof c?.speech === 'string' && c.speech.trim().length > 0
+        );
+
+        if (speechClips.length === 0) {
+          console.log('[checkAudio] No speech clips found');
           setIsGenerating(false);
           return;
         }
-        const testUrl = `/audio/${activeProject}/0.mp3?t=${Date.now()}`;
+
+        // Check if first audio file exists
+        const testUrl = `/projects/${activeProject}/audio/0.mp3`;
         console.log(`[checkAudio] Checking ${testUrl}`);
+        
         const resp = await fetch(testUrl, { method: 'HEAD' });
-        const contentType = resp.headers.get('content-type');
+        console.log(`[checkAudio] Status: ${resp.status}`);
 
-        console.log(`[checkAudio] Status: ${resp.status}, Content-Type: ${contentType}`);
-
-        // If it's not ok, or it's giving us HTML instead of audio, it's missing
-        if (!resp.ok || (contentType && contentType.includes('text/html'))) {
-          console.log(`Audio for ${activeProject} missing or invalid. Triggering generation...`);
+        if (!resp.ok) {
+          console.log(`Audio for ${activeProject} missing. Generating...`);
           setIsGenerating(true);
-          try {
-            const genResp = await fetch('/api/generate-audio', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ projectId: activeProject })
-            });
-            const result = await genResp.json();
-            console.log("[checkAudio] Generation result:", result);
-          } catch (genErr) {
-            console.error("[checkAudio] Generation API call failed:", genErr);
-          } finally {
-            setIsGenerating(false);
-          }
+          
+          // Run the generation script
+          console.log('[checkAudio] Please run: pnpm generate-audio', activeProject);
+          alert(`Audio files not found. Please run:\n\npnpm generate-audio ${activeProject}\n\nThen refresh the page.`);
+          setIsGenerating(false);
         } else {
           console.log(`[checkAudio] Audio assets for ${activeProject} found.`);
           setIsGenerating(false);
@@ -343,202 +467,303 @@ export default function App() {
         setIsGenerating(false);
       }
     };
-    if (activeProject) checkAudio();
-  }, [activeProject, projects]);
 
-  const togglePlay = () => setIsPlaying(!isPlaying);
+    if (activeProject && project) {
+      checkAudio();
+    }
+  }, [activeProject, project]);
+
+  // Preload all audio files for the project
+  useEffect(() => {
+    const preloadAudio = async () => {
+      if (!project || isGenerating) return;
+      
+      try {
+        setIsLoadingAudio(true);
+        const newCache = new Map<string, HTMLAudioElement>();
+        
+        // Get all speech clips
+        const speechClips = project.clips.filter((c: any) => 
+          c.type !== 'transition' && typeof c?.speech === 'string' && c.speech.trim().length > 0
+        );
+
+        console.log(`[preloadAudio] Loading ${speechClips.length} audio files...`);
+
+        // Load all audio files in parallel
+        const loadPromises = speechClips.map(async (_: any, index: number) => {
+          const audioPath = `/projects/${activeProject}/audio/${index}.mp3`;
+          
+          try {
+            const response = await fetch(audioPath);
+            if (!response.ok) {
+              console.warn(`[preloadAudio] Failed to load ${audioPath}`);
+              return null;
+            }
+
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            const audio = new Audio(objectUrl);
+
+            // Wait for metadata to load
+            await new Promise<void>((resolve, reject) => {
+              audio.onloadedmetadata = () => resolve();
+              audio.onerror = () => reject(new Error(`Failed to load audio ${index}`));
+            });
+
+            const cacheKey = `${activeProject}-${index}`;
+            newCache.set(cacheKey, audio);
+            console.log(`[preloadAudio] Loaded ${audioPath} (${audio.duration.toFixed(2)}s)`);
+            
+            return audio;
+          } catch (error) {
+            console.error(`[preloadAudio] Error loading ${audioPath}:`, error);
+            return null;
+          }
+        });
+
+        await Promise.all(loadPromises);
+        
+        setAudioCache(newCache);
+        console.log(`[preloadAudio] Successfully loaded ${newCache.size} audio files`);
+      } catch (error) {
+        console.error('[preloadAudio] Error preloading audio:', error);
+      } finally {
+        setIsLoadingAudio(false);
+      }
+    };
+
+    if (activeProject && project && !isGenerating) {
+      preloadAudio();
+    }
+
+    // Cleanup on unmount or project change
+    return () => {
+      audioCache.forEach((audio, key) => {
+        audio.pause();
+        if (audio.src.startsWith('blob:')) {
+          URL.revokeObjectURL(audio.src);
+        }
+      });
+    };
+  }, [activeProject, project, isGenerating]);
+
+  // Auto-start TTS when clip changes and is playing
+  useEffect(() => {
+    if (isPlaying && shouldUseTTS && currentTime === 0) {
+      speak();
+    }
+  }, [currentClipIndex, shouldUseTTS, isPlaying, speak, currentTime]);
+
+  const togglePlay = () => {
+    if (currentTime >= clipDuration && currentClipIndex >= processedClips.length - 1) {
+      setCurrentClipIndex(0);
+      setCurrentTime(0);
+    }
+    
+    const newIsPlaying = !isPlaying;
+    setIsPlaying(newIsPlaying);
+    
+    // Sync TTS audio
+    if (shouldUseTTS) {
+      if (newIsPlaying) {
+        if (currentTime === 0) {
+          speak(); // Start from beginning
+        } else {
+          resumeTTS(); // Resume from current position
+        }
+      } else {
+        pauseTTS();
+      }
+    }
+  };
+
+  const nextClip = () => {
+    stopTTS(); // Stop current TTS
+    if (currentClipIndex < processedClips.length - 1) {
+      let nextIndex = currentClipIndex + 1;
+      if (disableTransitions && processedClips[nextIndex].type === 'transition') {
+          nextIndex++;
+      }
+      if (nextIndex < processedClips.length) {
+          setCurrentClipIndex(nextIndex);
+          setCurrentTime(0);
+      }
+    }
+  };
+
+  const prevClip = () => {
+    stopTTS(); // Stop current TTS
+    if (currentClipIndex > 0) {
+      let prevIndex = currentClipIndex - 1;
+      if (disableTransitions && processedClips[prevIndex].type === 'transition') {
+          prevIndex--;
+      }
+      if (prevIndex >= 0) {
+          setCurrentClipIndex(prevIndex);
+          setCurrentTime(0);
+      }
+    } else {
+      setCurrentTime(0);
+      setResetCounter((c) => c + 1);
+    }
+  };
+
   const reset = () => {
-    setIsPlaying(false);
+    stopTTS(); // Stop current TTS
     setCurrentClipIndex(0);
     setCurrentTime(0);
-  };
-  const nextClip = () => {
-    if (currentClipIndex < project.clips.length - 1) {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentClipIndex(prev => prev + 1);
-        setCurrentTime(0);
-        setIsTransitioning(false);
-      }, 300);
-    }
-  };
-  const prevClip = () => {
-    if (currentClipIndex > 0) {
-      setIsTransitioning(true);
-      setTimeout(() => {
-        setCurrentClipIndex(prev => prev - 1);
-        setCurrentTime(0);
-        setIsTransitioning(false);
-      }, 300);
-    }
+    setIsPlaying(false);
+    setResetCounter((c: number) => c + 1);
   };
 
   const toggleOrientation = () => {
-    setIsPlaying(false);
     setIsPortrait(!isPortrait);
   };
 
-  return (
-    <div className="w-full h-screen bg-black text-white flex flex-col font-sans">
-      {/* Viewport / Stage */}
-      <div
-        ref={containerRef}
-        className={
-          isRecordMode
-            ? 'flex-1 relative overflow-hidden flex items-start justify-start p-0 bg-black'
-            : 'flex-1 relative overflow-hidden flex items-center justify-center p-8 bg-zinc-950'
+  const renderState = useMemo(() => getCurrentRenderState(currentClipIndex, currentTime, processedClips, disableTransitions), [currentClipIndex, currentTime, processedClips, disableTransitions]);
+
+  // Expose functions for rendering mode
+  useEffect(() => {
+    if (isRecordMode) {
+      // Calculate total duration
+      const getTotalDuration = () => {
+        let total = 0;
+        for (const clip of processedClips) {
+          if (clip.type === 'transition') {
+            total += clip.duration || 0.5;
+          } else {
+            const audioIdx = processedClips.slice(0, processedClips.indexOf(clip) + 1)
+              .filter(c => c.type !== 'transition').length - 1;
+            const audio = audioCache.get(`${activeProject}-${audioIdx}`);
+            total += audio?.duration || clip.duration || 4;
+          }
         }
-      >
-        <div
-          style={{
-            width: STAGE_WIDTH * stageScale,
-            height: STAGE_HEIGHT * stageScale
-          }}
-          className="relative"
-        >
-          <div
-            style={{
-              width: STAGE_WIDTH,
-              height: STAGE_HEIGHT,
-              transform: `scale(${stageScale})`,
-              transformOrigin: 'top left'
-            }}
-            className="relative bg-black shadow-2xl overflow-hidden border border-zinc-800"
-          >
-            {/* Static Background Iframe */}
-            {hasClips && (
-              <iframe
-                key={activeProject}
-                src={project.background || "/footage/background.html"}
-                className="absolute inset-0 w-full h-full border-none z-0 pointer-events-none"
-                title="background"
-              />
-            )}
+        return total;
+      };
 
-            {currentClip && currentClip.type === 'docSpot' && (
-              <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-                <DocSpot
-                  key={`${activeProject}-${currentClipIndex}`}
-                  clip={currentClip}
-                  currentTime={currentTime}
-                  projectId={activeProject}
-                  clipIndex={currentClipIndex}
-                  duration={clipDuration}
-                  isPortrait={isPortrait}
-                />
-              </div>
-            )}
+      // Seek to specific time
+      const seekTo = (time: number) => {
+        let accumulated = 0;
+        let targetClipIndex = 0;
+        let localTime = 0;
 
-            {currentClip && currentClip.type === 'tweet' && (
-              <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-                <Tweet
-                  key={`${activeProject}-${currentClipIndex}`}
-                  clip={currentClip}
-                  currentTime={currentTime}
-                  projectId={activeProject}
-                  clipIndex={currentClipIndex}
-                  duration={clipDuration}
-                  isPortrait={isPortrait}
-                />
-              </div>
-            )}
+        for (let i = 0; i < processedClips.length; i++) {
+          const clip = processedClips[i];
+          let clipDuration = 0;
 
-            {currentClip && (currentClip.type === 'footagesAroundTitle' || currentClip.type === 'footagesFullScreen') && (
-              <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-                <FootageClip
-                  key={`${activeProject}-${currentClipIndex}`}
-                  clip={currentClip}
-                  currentTime={currentTime}
-                  projectId={activeProject}
-                  clipIndex={currentClipIndex}
-                  duration={clipDuration}
-                />
-              </div>
-            )}
+          if (clip.type === 'transition') {
+            clipDuration = clip.duration || 0.5;
+          } else {
+            const audioIdx = processedClips.slice(0, i + 1)
+              .filter(c => c.type !== 'transition').length - 1;
+            const audio = audioCache.get(`${activeProject}-${audioIdx}`);
+            clipDuration = audio?.duration || clip.duration || 4;
+            
+            // Track audio for rendering - log when we enter a new speech clip
+            const audioFile = `${activeProject}/audio/${audioIdx}.mp3`;
+            const existing = audioLogRef.current.find(log => log.file === audioFile);
+            if (!existing && time >= accumulated && time < accumulated + clipDuration) {
+              audioLogRef.current.push({
+                file: audioFile,
+                startTime: accumulated
+              });
+            }
+          }
 
-            {isGenerating && (
-              <div className="absolute inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col items-center justify-center">
-                <RefreshCw className="w-12 h-12 text-[#00FF00] animate-spin mb-4" />
-                <h2 className="text-2xl font-black tracking-widest uppercase">Generating Audio Assets...</h2>
-                <p className="text-zinc-500 mt-2 font-mono">Edge-TTS is synthesizing your project scripts</p>
-              </div>
-            )}
+          if (accumulated + clipDuration >= time) {
+            targetClipIndex = i;
+            localTime = time - accumulated;
+            break;
+          }
+
+          accumulated += clipDuration;
+        }
+
+        setCurrentClipIndex(targetClipIndex);
+        setCurrentTime(localTime);
+        setIsPlaying(false);
+      };
+
+      const getAudioLog = () => audioLogRef.current;
+
+      // Expose to window for puppeteer
+      (window as any).seekTo = seekTo;
+      (window as any).getTotalDuration = getTotalDuration;
+      (window as any).getAudioLog = getAudioLog;
+      (window as any).suppressTTS = true;
+
+      console.log('[Render Mode] Functions exposed to window');
+    }
+  }, [isRecordMode, processedClips, audioCache, activeProject]);
+
+  if (isLoadingProject || !project) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+        <div className="animate-pulse">Loading project...</div>
+      </div>
+    );
+  }
+
+  if (isGenerating || isLoadingAudio) {
+    return (
+      <div className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin w-8 h-8 border-2 border-[#00FF00] border-t-transparent rounded-full mx-auto mb-4"></div>
+          <div className="text-lg font-medium">
+            {isGenerating ? 'Generating Audio...' : 'Loading Audio...'}
+          </div>
+          <div className="text-sm text-zinc-400 mt-2">
+            {isGenerating ? `Creating speech files for ${activeProject}` : `Preloading ${audioCache.size} audio files`}
           </div>
         </div>
       </div>
+    );
+  }
 
-      {/* Controls */}
-      {!isRecordMode && (
-        <div className="h-20 bg-zinc-900 border-t border-zinc-800 flex items-center px-8 justify-between">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={toggleOrientation}
-              className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
-              title={isPortrait ? "Switch to Landscape" : "Switch to Portrait"}
-            >
-              {isPortrait ? <Monitor size={20} /> : <Smartphone size={20} />}
-            </button>
-
-            <span className="text-zinc-600">|</span>
-
-            <div className="flex flex-col">
-              <span className="text-xs font-mono text-zinc-500 uppercase font-bold text-zinc-400">Project</span>
-              <select
-                value={activeProject}
-                onChange={(e) => {
-                  setActiveProject(e.target.value);
-                  setCurrentClipIndex(0);
-                  setCurrentTime(0);
-                  setIsPlaying(false);
-                }}
-                className="bg-zinc-800 text-sm font-bold text-white border border-white/10 rounded px-2 py-0.5 cursor-pointer hover:border-[#00FF00] transition-colors outline-none"
-              >
-                {Object.keys(projects).map(id => (
-                  <option key={id} value={id}>{id}</option>
-                ))}
-              </select>
-            </div>
-            <span className="text-zinc-600">|</span>
-            <div className="flex flex-col">
-              <span className="text-xs font-mono text-zinc-400 uppercase font-bold">Current Clip</span>
-              <span className="text-sm font-bold text-white">
-                {hasClips ? `${currentClipIndex + 1} / ${project.clips.length} : ${currentClip?.type}` : 'No clips'}
-              </span>
-            </div>
-            <span className="text-zinc-600">|</span>
-            <div className="flex flex-col">
-              <span className="text-xs font-mono text-zinc-400 uppercase font-bold">Time</span>
-              <span className="text-sm font-mono text-[#00FF00]">
-                {currentTime.toFixed(2)}s / {clipDuration.toFixed(2)}s
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button onClick={prevClip} className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
-              <SkipBack size={20} />
-            </button>
-
-            <button
-              onClick={togglePlay}
-              className="flex items-center space-x-2 bg-white text-black px-8 py-3 rounded-full font-bold hover:bg-[#00FF00] hover:text-black transition-colors"
-            >
-              {isPlaying ? <Pause size={20} fill="currentColor" /> : <Play size={20} fill="currentColor" />}
-              <span>{isPlaying ? 'PAUSE' : 'PLAY'}</span>
-            </button>
-
-            <button onClick={nextClip} className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors">
-              <SkipForward size={20} />
-            </button>
-
-            <button
-              onClick={reset}
-              className="p-3 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors ml-2"
-            >
-              <RefreshCw size={20} />
-            </button>
-          </div>
+  return (
+    <div className={`h-screen w-screen bg-neutral-950 text-white flex flex-col font-sans overflow-hidden ${isRecordMode && !isLoadingAudio ? 'ready-to-record' : ''}`}>
+      {/* Main Canvas Area */}
+      <main ref={containerRef} className="flex-1 relative flex items-center justify-center bg-[#0a0a0a] overflow-hidden">
+        <div 
+          className="relative bg-black shadow-2xl ring-1 ring-neutral-800 overflow-hidden shrink-0"
+          style={{
+            width: CANVAS_WIDTH,
+            height: CANVAS_HEIGHT,
+            transform: `scale(${scale})`,
+            transformOrigin: 'center center'
+          }}
+        >
+          <Player renderState={renderState} background={project.background} resetCounter={resetCounter} isPlaying={isPlaying} />
         </div>
+      </main>
+
+      {/* Bottom Controls Bar */}
+      {!isRecordMode && (
+        <PlaybackControls
+          projects={projects}
+          activeProject={activeProject}
+          isGenerating={isGenerating || isTTSLoading}
+          isPlaying={isPlaying}
+          currentClipIndex={currentClipIndex}
+          currentTime={currentTime}
+          clipDuration={clipDuration}
+          totalClips={project.clips.length}
+          isPortrait={isPortrait}
+          disableTransitions={disableTransitions}
+          onProjectChange={(projectId: string) => {
+            stopTTS(); // Stop current TTS when switching projects
+            setActiveProject(projectId);
+            setCurrentClipIndex(0);
+            setCurrentTime(0);
+            setIsPlaying(false);
+          }}
+          onTogglePlay={togglePlay}
+          onNextClip={nextClip}
+          onPrevClip={prevClip}
+          onReset={reset}
+          onToggleOrientation={toggleOrientation}
+          onToggleTransitions={() => setDisableTransitions(!disableTransitions)}
+        />
       )}
     </div>
   );

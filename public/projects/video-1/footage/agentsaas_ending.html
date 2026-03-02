@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>agentsaas Ending</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./agentsaas_styles.css" />
+</head>
+
+<body>
+    <div class="particle-container" id="particles"></div>
+    <div class="final-content">
+        <div class="logo" id="logo">A</div>
+        <div class="final-text" id="final">
+            <div>Computer researches.</div>
+            <div>Computer <span class="highlight-italic">builds.</span></div>
+        </div>
+    </div>
+
+    <script>
+        const ptcContainer = document.getElementById('particles');
+        const finalText = document.getElementById('final');
+        const logo = document.getElementById('logo');
+        const icons = ['✨', '🚀', '🧠', '⚡', '🌐', '📊'];
+
+        function createExplosion() {
+            // Particles
+            for (let i = 0; i < 60; i++) {
+                const el = document.createElement('div');
+                el.className = 'particle';
+
+                const angle = Math.random() * Math.PI * 2;
+                const distOuter = 800 + Math.random() * 400;
+
+                ptcContainer.appendChild(el);
+
+                setTimeout(() => {
+                    el.style.opacity = '1';
+                    el.style.transform = `translate3d(${Math.cos(angle) * distOuter}px, ${Math.sin(angle) * distOuter}px, ${Math.random() * 500}px)`;
+
+                    setTimeout(() => {
+                        el.style.transform = 'translate3d(0,0,0)';
+                        el.style.opacity = '0';
+                    }, 1000 + Math.random() * 1000);
+                }, 50);
+            }
+
+            // Icons
+            for (let i = 0; i < 15; i++) {
+                const el = document.createElement('div');
+                el.className = 'icon';
+                el.innerHTML = icons[i % icons.length];
+
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 600 + Math.random() * 300;
+
+                el.style.transform = `translate3d(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist}px, -200px) scale(0)`;
+                ptcContainer.appendChild(el);
+
+                setTimeout(() => {
+                    el.style.opacity = '1';
+                    el.style.transform = `translate3d(${Math.cos(angle) * (dist / 3)}px, ${Math.sin(angle) * (dist / 3)}px, 0) scale(1) rotate(${Math.random() * 60 - 30}deg)`;
+
+                    setTimeout(() => {
+                        el.style.opacity = '0';
+                        el.style.transform = 'translate3d(0,0,0) scale(0)';
+                    }, 1500 + Math.random() * 500);
+                }, 200 + i * 50);
+            }
+        }
+
+        function startAnimation() {
+            setTimeout(() => {
+                createExplosion();
+
+                setTimeout(() => {
+                    logo.style.opacity = '1';
+                    logo.style.transform = 'scale(1)';
+
+                    finalText.style.opacity = '1';
+                    finalText.style.transform = 'scale(1) translateY(0)';
+                }, 1800);
+            }, 300);
+        }
+
+        if (window.location.search.includes('autoplay=false')) {
+            window.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'play') {
+                    startAnimation();
+                }
+            });
+        } else {
+            startAnimation();
+        }
+    </script>
+</body>
+
+</html>
