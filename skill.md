@@ -150,161 +150,71 @@ pnpm render video-1 --portrait
 
 ## HTML Animation Guidelines
 
-When creating HTML animations for video rendering, follow these important guidelines:
+When creating HTML animations for video rendering, use the **CSS variable timeline** model.
 
-### ✅ Supported Animation Patterns
-- **Frame-based animations**: Use `window.registerFrameAnimation()` for precise control
-- **setTimeout animations**: Style changes triggered by setTimeout (legacy support)
-- **Typewriter effects**: Character-by-character text display
-- **Fade in/out**: Opacity changes from 0 to 1
-- **Slide animations**: Transform translateX/Y movements
-- **CSS @keyframes**: blink, spin animations (automatically converted)
+### Core Model
+- Renderer controls time: Puppeteer sets `--t` every frame.
+- Page only renders state: `DOM = f(t)`.
+- No lifecycle animation APIs (`play/start/reset`) and no hidden runtime state.
 
-### 🚨 Critical Requirements
-- **NO CSS transitions**: All `transition` properties are removed and cause conflicts
-- **Use frame animations**: Always use `window.registerFrameAnimation()` for new animations
-- **Wait for animation system**: Check `window.registerFrameAnimation` exists before starting
-- **Deterministic timing**: Avoid `Date.now()` or `performance.now()`
-- **Autoplay support**: Include autoplay=false parameter handling
+### ✅ Required Patterns
+- Define timeline root:
+  ```css
+  :root { --t: 0; }
+  ```
+- Every animated property must derive from `--t`.
+- Always clamp normalized progress values:
+  ```css
+  --p: clamp(0, calc((var(--t) - var(--start)) / var(--duration)), 1);
+  ```
+- Express initial/ending states directly in CSS (seek-safe at any frame).
+- Use small deterministic JS only for content mapping (e.g., subtitle/text index from `t`).
 
-### 🔧 Animation System API
-```javascript
-// Wait for animation system to load
-function initializeAnimations() {
-  if (!window.registerFrameAnimation) {
-    requestAnimationFrame(initializeAnimations);
-    return;
-  }
-  
-  // Register frame-based animation
-  window.registerFrameAnimation(element, (frame, elapsed) => {
-    // elapsed is in seconds from animation start
-    if (elapsed >= 0.5) { // 500ms delay
-      const progress = Math.min((elapsed - 0.5) / 1.0, 1); // 1s duration
-      element.style.opacity = progress;
-    }
-  }, 1.5); // Total duration: 1.5s
-}
+### 🚫 Forbidden Patterns
+- `transition`
+- `animation` / `@keyframes`
+- `window.registerFrameAnimation(...)`
+- `requestAnimationFrame` loops for timeline progression
+- Implicit time from `Date.now()` / `performance.now()` for visual state
 
-// Support autoplay control
-if (window.location.search.includes('autoplay=false')) {
-  window.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'play') {
-      startAnimation();
-    }
-  });
-} else {
-  startAnimation();
+### Recommended Template
+```css
+.element {
+  --start: 0.5;
+  --duration: 1;
+  --p: clamp(0, calc((var(--t) - var(--start)) / var(--duration)), 1);
+
+  opacity: var(--p);
+  transform: translateY(calc((1 - var(--p)) * 20px));
 }
 ```
 
-### 📝 Animation Patterns
-```javascript
-// ✅ Fade in animation
-window.registerFrameAnimation(element, (frame, elapsed) => {
-  const progress = Math.min(elapsed / 1.0, 1); // 1s duration
-  element.style.opacity = progress;
-}, 1.0);
-
-// ✅ Slide in from right
-window.registerFrameAnimation(element, (frame, elapsed) => {
-  if (elapsed >= 0.2) { // 200ms delay
-    const progress = Math.min((elapsed - 0.2) / 0.8, 1); // 800ms duration
-    const translateX = 100 * (1 - progress); // From 100px to 0
-    element.style.transform = `translateX(${translateX}px)`;
-    element.style.opacity = progress;
-  }
-}, 1.0);
-
-// ✅ Easing function for smooth animations
-const easedProgress = progress < 0.5 
-  ? 2 * progress * progress 
-  : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+### Easing (without transition)
+Use math on progress directly:
+```css
+--p: clamp(0, calc((var(--t) - var(--start)) / var(--duration)), 1);
+--ease-out: calc(1 - (1 - var(--p)) * (1 - var(--p)));
+opacity: var(--ease-out);
 ```
 
-### ⚠️ Common Pitfalls
+### JS Hook Pattern (text/content only)
 ```html
-<!-- ❌ NEVER use CSS transitions -->
-<style>
-.element { transition: all 0.5s ease; } /* CAUSES CONFLICTS */
-</style>
-
-<!-- ❌ Don't use CSS animations directly -->
-<style>
-@keyframes fadeIn { /* Will be overridden */ }
-.element { animation: fadeIn 1s; }
-</style>
-
-<!-- ✅ Use initial inline styles -->
-<div id="element" style="opacity: 0; transform: translateX(100px);">
-  Content
-</div>
-
-<!-- ✅ Use frame animations in script -->
 <script>
-function initializeAnimations() {
-  if (!window.registerFrameAnimation) {
-    requestAnimationFrame(initializeAnimations);
-    return;
-  }
-  // Animation code here
-}
-initializeAnimations();
+  const labels = ['A', 'B', 'C'];
+  const el = document.getElementById('label');
+
+  window.onTimelineUpdate = (t) => {
+    const idx = Math.floor(Math.max(0, t) / 1.2) % labels.length;
+    el.textContent = labels[idx];
+  };
 </script>
 ```
 
-### 🎯 Animation System Features
-- **Time synchronization**: All animations sync with video playback
-- **Reset capability**: Animations reset when video seeks to beginning
-- **Smooth playback**: 60fps frame-based rendering
-- **Easing support**: Built-in cubic-bezier approximations
-- **Element cleanup**: Automatic removal of temporary elements
-- **Debug logging**: Console logs for animation state tracking
-
-### 📋 HTML Template Structure
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Animation Title</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="./agentsaas_styles.css" />
-</head>
-<body>
-    <!-- Content with initial styles -->
-    <div id="element" style="opacity: 0; transform: translateY(20px);">
-        Content
-    </div>
-
-    <script>
-        function startAnimation() {
-            // Animation logic using window.registerFrameAnimation
-        }
-
-        function initializeAnimations() {
-            if (!window.registerFrameAnimation) {
-                requestAnimationFrame(initializeAnimations);
-                return;
-            }
-            
-            if (window.location.search.includes('autoplay=false')) {
-                window.addEventListener('message', (event) => {
-                    if (event.data && event.data.type === 'play') {
-                        startAnimation();
-                    }
-                });
-            } else {
-                startAnimation();
-            }
-        }
-        
-        initializeAnimations();
-    </script>
-</body>
-</html>
-```
+### Determinism Checklist
+- Seeking to any `t` yields exactly one deterministic frame.
+- Animation state must not depend on "previous frame".
+- Cross-clip transition visuals should be continuous in both clips.
+- Final frame (`t = totalDuration`) must remain on the last clip (no wrap to first clip).
 
 ## Limitations
 

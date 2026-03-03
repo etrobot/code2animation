@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@0,400;0,600;1,400;1,600&display=swap');
 
+:root {
+    --t: 0;
+}
+
 body {
     margin: 0;
     padding: 0;
@@ -51,12 +55,7 @@ body {
     height: 6rem;
     background-color: #10b981;
     margin-left: 12px;
-    animation: blink 1s step-end infinite;
-}
-
-@keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+    opacity: clamp(0, calc(1 - (max(0, var(--t) - 1.6) * 2)), 1);
 }
 
 /* Intro Toggle */
@@ -167,11 +166,7 @@ body {
     border: 3px solid rgba(96, 165, 250, 0.3);
     border-top-color: #60a5fa;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
+    transform: rotate(calc(var(--t) * 360deg));
 }
 
 .tasks-list {
@@ -509,3 +504,25 @@ body {
         aspect-ratio: 16/9;
     }
 }
+
+
+/* Deterministic timeline overrides */
+.introducing { --p: clamp(0, calc((var(--t) - 0.1) / 0.5), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 20px)); letter-spacing: calc(0.1em + var(--p) * 0.3em); }
+.search-title { --p: clamp(0, calc((var(--t) - 0.1) / 0.5), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 20px)); }
+.toggle-container { --p: clamp(0, calc((var(--t) - 0.4) / 0.5), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 20px)) scale(calc(0.95 + var(--p) * 0.05)); }
+.toggle-pill { --p: clamp(0, calc((var(--t) - 0.8) / 0.6), 1); transform: translateX(calc(var(--p) * 100%)); background: color-mix(in srgb, rgba(255, 255, 255, 0.1) calc((1 - var(--p)) * 100%), #10b981 calc(var(--p) * 100%)); box-shadow: 0 0 calc(var(--p) * 20px) rgba(16, 185, 129, calc(var(--p) * 0.4)); }
+.subagents-header { --p: clamp(0, calc((var(--t) - 3.67) / 0.5), 1); opacity: var(--p); transform: translateX(calc((1 - var(--p)) * -20px)); }
+#tasks .task-item { color: #e5e7eb; }
+#tasks .task-item:nth-child(1) { --p: clamp(0, calc((var(--t) - 4.17) / 0.3), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 10px)); }
+#tasks .task-item:nth-child(2) { --p: clamp(0, calc((var(--t) - 4.87) / 0.3), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 10px)); }
+#tasks .task-item:nth-child(3) { --p: clamp(0, calc((var(--t) - 5.57) / 0.3), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 10px)); }
+#tasks { opacity: clamp(0, calc(1 - ((var(--t) - 9.77) / 0.2)), 1); }
+.result-area { --p: clamp(0, calc((var(--t) - 10.27) / 0.8), 1); display: block; opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 20px)); }
+.model-view { --p: clamp(0, calc((var(--t) - 0.2) / 0.8), 1); opacity: var(--p); transform: translateX(calc((1 - var(--p)) * 20px)); }
+.slack-notification { --p: clamp(0, calc((var(--t) - 0.8) / 0.5), 1); opacity: var(--p); transform: translateX(calc((1 - var(--p)) * 50px)); }
+.video-overlay { --p: clamp(0, calc((var(--t) - 0.5) / 0.5), 1); transform: scale(calc(0.9 + var(--p) * 0.1)); }
+.logo { --p: clamp(0, calc((var(--t) - 2.1) / 0.5), 1); opacity: var(--p); transform: scale(calc(0.5 + var(--p) * 0.5)); }
+.final-text { --p: clamp(0, calc((var(--t) - 2.1) / 0.5), 1); opacity: var(--p); transform: scale(calc(0.9 + var(--p) * 0.1)) translateY(calc((1 - var(--p)) * 20px)); }
+
+.particle { --p1: clamp(0, calc((var(--t) - 0.35) / 1), 1); --p2: clamp(0, calc((var(--t) - 1.35) / 1), 1); opacity: calc((1 - var(--p2)) * clamp(0, calc((var(--t) - 0.35) / 0.1), 1)); transform: translate3d(calc(var(--dx, 0px) * (var(--p1) - var(--p2))), calc(var(--dy, 0px) * (var(--p1) - var(--p2))), calc(var(--dz, 0px) * (var(--p1) - var(--p2)))); }
+.icon { --pi: clamp(0, calc((var(--t) - 0.3 - var(--start, 0)) / 1.5), 1); --fade: clamp(0, calc((var(--t) - 1.8 - var(--start, 0)) / 0.5), 1); opacity: calc(var(--pi) * (1 - var(--fade))); transform: translate3d(calc(var(--dx, 0px) * var(--pi)), calc(var(--dy, 0px) * var(--pi)), 0) scale(calc(var(--pi) * (1 - var(--fade)))) rotate(calc(var(--rot, 0deg) * var(--pi))); }
