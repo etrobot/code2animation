@@ -39,7 +39,10 @@ export function getCurrentRenderState(
 
       activeMedias.push({ media: from.media, style: styles.from });
       activeMedias.push({ media: to.media, style: styles.to });
-      return { activeMedias: dedupeActiveMedias(activeMedias) };
+      return {
+        activeMedias: dedupeActiveMedias(activeMedias),
+        preloadMedias: []
+      };
     }
   }
 
@@ -53,7 +56,10 @@ export function getCurrentRenderState(
   }
 
   activeMedias.push({ media: globalTimeline[activeIndex].media, style: {} });
-  return { activeMedias: dedupeActiveMedias(activeMedias) };
+  return {
+    activeMedias: dedupeActiveMedias(activeMedias),
+    preloadMedias: getPreloadMedias(globalTimeline, activeIndex, globalTime, disableTransitions)
+  };
 }
 
 function getGlobalTimeFromLocal(clipIndex: number, localTime: number, clips: any[]) {
@@ -161,12 +167,37 @@ function dedupeActiveMedias(activeMedias: Array<{ media: any; style: any }>) {
   return deduped.reverse();
 }
 
+function getPreloadMedias(
+  globalTimeline: any[],
+  activeIndex: number,
+  globalTime: number,
+  disableTransitions: boolean
+) {
+  if (disableTransitions) return [];
+
+  const current = globalTimeline[activeIndex];
+  const next = globalTimeline[activeIndex + 1];
+  if (!current || !next) return [];
+  if (!current.media?.transition2next) return [];
+
+  const transitionDuration = current.media.duration || 0.5;
+  const preloadLead = Math.max(transitionDuration, 0.35);
+  const preloadStart = next.globalStart - preloadLead;
+
+  if (globalTime >= preloadStart && globalTime < next.globalStart) {
+    return [next.media];
+  }
+
+  return [];
+}
+
 export function getTransitionStyles(type: string, progress: number, hasStay?: boolean): any {
   const p = Math.min(Math.max(progress, 0), 1);
   const eased = p < 0.5
     ? 2 * p * p
     : 1 - Math.pow(-2 * p + 2, 2) / 2;
   const inv = 1 - eased;
+  const slideRightDistance = 220;
 
   // If the outgoing media is set to stay, keep it fully visible during transition.
   if (hasStay) {
@@ -183,8 +214,10 @@ export function getTransitionStyles(type: string, progress: number, hasStay?: bo
         };
       case 'slideRight':
         return {
-          from: { transform: 'translateX(0)', opacity: 1 },
-          to: { transform: `translateX(${(1 - eased) * 24}px)`, opacity: eased }
+          // Keep stay layers in the same outgoing motion path as the current media.
+          from: { transform: `translateX(${eased * slideRightDistance}px)`, opacity: inv },
+          // Incoming media flies in from the right.
+          to: { transform: `translateX(${(1 - eased) * slideRightDistance}px)`, opacity: eased }
         };
       case 'zoomIn':
         return {
@@ -210,8 +243,8 @@ export function getTransitionStyles(type: string, progress: number, hasStay?: bo
       };
     case 'slideRight':
       return {
-        from: { transform: `translateX(${eased * 24}px)`, opacity: inv },
-        to: { transform: `translateX(${(1 - eased) * -24}px)`, opacity: eased }
+        from: { transform: `translateX(${eased * slideRightDistance}px)`, opacity: inv },
+        to: { transform: `translateX(${(1 - eased) * slideRightDistance}px)`, opacity: eased }
       };
     case 'zoomIn':
       return {

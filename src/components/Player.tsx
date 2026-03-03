@@ -11,6 +11,10 @@ interface PlayerProps {
 
 export const Player = ({ renderState, background, resetCounter, isPlaying, onIframeLoad }: PlayerProps) => {
   if (!renderState || !renderState.activeMedias) return <div className="absolute inset-0 bg-black" />;
+  const activeIds = new Set(
+    renderState.activeMedias.map(({ media }: any) => media?.id).filter(Boolean)
+  );
+  const preloadMedias = (renderState.preloadMedias || []).filter((media: any) => !activeIds.has(media?.id));
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-neutral-900">
@@ -32,6 +36,16 @@ export const Player = ({ renderState, background, resetCounter, isPlaying, onIfr
 
       {/* Media Layer */}
       <div className="absolute inset-0">
+        {preloadMedias.map((media: any, index: number) => (
+          <MediaRenderer
+            key={`preload-${media.id || index}`}
+            media={media}
+            style={{ opacity: 0, pointerEvents: 'none' }}
+            isPlaying={isPlaying}
+            onIframeLoad={onIframeLoad}
+          />
+        ))}
+
         {renderState.activeMedias.map(({ media, style }: any, index: number) => (
           <MediaRenderer
             key={media.id || `media-${index}`}

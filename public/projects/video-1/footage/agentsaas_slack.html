@@ -11,7 +11,7 @@
 
 <body style="background: transparent;">
     <div class="screen-multi" style="background: transparent;">
-        <div class="slack-notification" id="slack" style="--p: clamp(0, calc((var(--t) - 0.1) / 0.5), 1); transform: translateX(calc((1 - var(--p)) * 100px)); opacity: var(--p);">
+        <div class="slack-notification" id="slack" style="--tg: 0; --p: clamp(0, calc((var(--tg) - 0.1) / 0.5), 1); transform: translateX(calc((1 - var(--p)) * 100px)); opacity: var(--p);">
             <div class="slack-icon"></div>
             <div class="slack-content">
                 <div class="slack-header">
@@ -36,7 +36,7 @@
             // Anchor local media time to first real global sync value.
             if (!hasAnchoredStart) {
                 if (safeGlobalTime <= 0.001) {
-                    root.style.setProperty('--t', '0.000000');
+                    root.style.setProperty('--tg', '0.000000');
                     return;
                 }
                 mediaStartGlobalTime = safeGlobalTime;
@@ -48,7 +48,7 @@
 
             const localTime = Math.max(0, safeGlobalTime - mediaStartGlobalTime);
             prevGlobalTime = safeGlobalTime;
-            root.style.setProperty('--t', localTime.toFixed(6));
+            root.style.setProperty('--tg', localTime.toFixed(6));
         };
     </script>
 </body>
