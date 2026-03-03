@@ -17,181 +17,33 @@
             <span>Executing Autonomous Plan</span>
         </div>
         <div id="tasks" class="tasks-list">
-            <div class="task-item">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-                <span>Searching financial databases for FY-2025 reports...</span>
-            </div>
-            <div class="task-item">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-                <span>Updating valuation model with real-time stock price...</span>
-            </div>
-            <div class="task-item">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-                <span>Synthesizing competitive analysis from 12 separate sources...</span>
-            </div>
+            <div class="task-item"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Searching financial databases for FY-2025 reports...</span></div>
+            <div class="task-item"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Updating valuation model with real-time stock price...</span></div>
+            <div class="task-item"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Synthesizing competitive analysis from 12 separate sources...</span></div>
         </div>
         <div id="result" class="result-area">
             <div class="result-title">Nvidia Valuation Report</div>
-            <div class="result-content">
-                Based on current data, Nvidia's forward P/E ratio remains attractive compared to peer AI chipmakers.
-                Revenue growth in the Data Center segment is projected to exceed 40% YoY. Key risks include geopolitical
-                tensions and supply chain constraints...
-            </div>
+            <div class="result-content">Based on current data, Nvidia's forward P/E ratio remains attractive compared to peer AI chipmakers. Revenue growth in the Data Center segment is projected to exceed 40% YoY. Key risks include geopolitical tensions and supply chain constraints...</div>
         </div>
     </div>
 
     <script>
-        const promptText = "Analyze Nvidia valuation and recent earnings reports to generate a comprehensive investment summary.";
+        const promptText = 'Analyze Nvidia valuation and recent earnings reports to generate a comprehensive investment summary.';
         const promptEl = document.getElementById('prompt');
         const headerEl = document.getElementById('header');
-        const taskItems = document.querySelectorAll('.task-item');
-        const resultEl = document.getElementById('result');
-        let hasAnimated = false;
 
-        function streamText(text, i, cb) {
-            if (i < text.length) {
-                promptEl.innerHTML += text.charAt(i);
-                setTimeout(() => streamText(text, i + 1, cb), 30);
-            } else if (cb) {
-                cb();
-            }
-        }
+        window.onTimelineUpdate = (t) => {
+            const typeIndex = Math.max(0, Math.min(promptText.length, Math.floor((t - 0.3) / 0.03) + 1));
+            promptEl.textContent = promptText.slice(0, typeIndex);
 
-        function startAnimation() {
-            if (hasAnimated) return;
-            hasAnimated = true;
-            
-            console.log('[ComplexTask] Starting animation sequence');
-            
-            // Main animation sequence using frame-based animations
-            window.registerFrameAnimation(document.body, (frame, elapsed) => {
-                // Typewriter effect for prompt (starts at 300ms)
-                if (elapsed >= 0.3 && !window.typewriterStarted) {
-                    window.typewriterStarted = true;
-                    console.log('[ComplexTask] Starting typewriter effect');
-                    
-                    // Use frame-based typewriter animation
-                    window.registerFrameAnimation(promptEl, (frame, typeElapsed) => {
-                        const charDelay = 0.03; // 30ms per character
-                        const currentChar = Math.floor(typeElapsed / charDelay);
-                        if (currentChar < promptText.length) {
-                            promptEl.innerHTML = promptText.substring(0, currentChar + 1);
-                        }
-                    }, promptText.length * 0.03 + 0.5);
-                }
-                
-                // Header slide-in animation (starts after typewriter + 400ms)
-                const typewriterDuration = promptText.length * 0.03;
-                const headerStartTime = 0.3 + typewriterDuration + 0.4;
-                if (elapsed >= headerStartTime) {
-                    const headerProgress = Math.min((elapsed - headerStartTime) / 0.5, 1); // 500ms duration
-                    
-                    // Apply easing
-                    const easedProgress = headerProgress < 0.5 
-                        ? 2 * headerProgress * headerProgress 
-                        : 1 - Math.pow(-2 * headerProgress + 2, 2) / 2;
-                    
-                    headerEl.style.opacity = easedProgress;
-                    const translateX = -20 * (1 - easedProgress); // Slide from -20px to 0
-                    headerEl.style.transform = `translateX(${translateX}px)`;
-                }
-                
-                // Task items animation (staggered, starts after header)
-                const taskStartTime = headerStartTime + 0.5;
-                taskItems.forEach((item, idx) => {
-                    const itemStartTime = taskStartTime + (idx * 0.7); // 700ms stagger
-                    if (elapsed >= itemStartTime) {
-                        const itemProgress = Math.min((elapsed - itemStartTime) / 0.3, 1); // 300ms duration
-                        
-                        item.style.opacity = itemProgress;
-                        const translateY = 10 * (1 - itemProgress); // Slide from 10px to 0
-                        item.style.transform = `translateY(${translateY}px)`;
-                        
-                        if (itemProgress >= 1) {
-                            item.classList.add('visible', 'active');
-                        }
-                    }
-                });
-                
-                // Completion animation (after all tasks + 3.5s)
-                const completionTime = taskStartTime + (taskItems.length * 0.7) + 3.5;
-                if (elapsed >= completionTime && !window.completionStarted) {
-                    window.completionStarted = true;
-                    console.log('[ComplexTask] Starting completion sequence');
-                    
-                    // Hide spinner and update header
-                    const spinner = document.querySelector('.spinner');
-                    if (spinner) spinner.style.display = 'none';
-                    
-                    headerEl.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Plan Completed</span>';
-                    headerEl.style.background = 'rgba(16, 185, 129, 0.2)';
-                }
-                
-                // Result animation (500ms after completion)
-                const resultStartTime = completionTime + 0.5;
-                if (elapsed >= resultStartTime && !window.resultStarted) {
-                    window.resultStarted = true;
-                    console.log('[ComplexTask] Starting result animation');
-                    
-                    // Hide tasks and show result
-                    document.getElementById('tasks').style.display = 'none';
-                    resultEl.style.display = 'block';
-                    
-                    // Animate result appearance
-                    window.registerFrameAnimation(resultEl, (frame, resultElapsed) => {
-                        if (resultElapsed >= 0.05) { // 50ms delay
-                            const resultProgress = Math.min((resultElapsed - 0.05) / 0.8, 1); // 800ms duration
-                            
-                            // Apply easing
-                            const easedProgress = resultProgress < 0.5 
-                                ? 2 * resultProgress * resultProgress 
-                                : 1 - Math.pow(-2 * resultProgress + 2, 2) / 2;
-                            
-                            resultEl.style.opacity = easedProgress;
-                            const translateY = 20 * (1 - easedProgress); // Slide from 20px to 0
-                            resultEl.style.transform = `translateY(${translateY}px)`;
-                        }
-                    }, 0.85);
-                }
-            });
-        }
-
-        // Wait for animation system to load
-        function initializeAnimations() {
-            if (!window.registerFrameAnimation) {
-                requestAnimationFrame(initializeAnimations);
-                return;
-            }
-            
-            console.log('[ComplexTask] Animation system ready');
-            
-            if (window.location.search.includes('autoplay=false')) {
-                console.log('[ComplexTask] Autoplay disabled, waiting for play message');
-                window.addEventListener('message', (event) => {
-                    if (event.data && event.data.type === 'play') {
-                        console.log('[ComplexTask] Received play message');
-                        startAnimation();
-                    }
-                });
+            if (t >= 9.67) {
+                headerEl.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Plan Completed</span>';
+                headerEl.style.background = 'rgba(16, 185, 129, 0.2)';
             } else {
-                console.log('[ComplexTask] Autoplay enabled, starting animation');
-                startAnimation();
+                headerEl.innerHTML = '<div class="spinner"></div><span>Executing Autonomous Plan</span>';
+                headerEl.style.background = 'rgba(59, 130, 246, 0.1)';
             }
-        }
-        
-        initializeAnimations();
+        };
     </script>
 </body>
 

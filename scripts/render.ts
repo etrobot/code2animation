@@ -256,6 +256,7 @@ async function main() {
     const time = i / FPS;
 
     await page.evaluate(`(async (t) => {
+      document.documentElement.style.setProperty('--t', String(t));
       if (typeof window.seekTo === 'function') {
         window.seekTo(t);
         
@@ -273,6 +274,7 @@ async function main() {
             window.addEventListener('message', handler);
             setTimeout(resolve, 500);
             try {
+              iframe.contentWindow.document?.documentElement?.style?.setProperty('--t', String(t));
               iframe.contentWindow.postMessage({ type: 'seek', time: t }, '*');
             } catch (e) {
               resolve();

@@ -17,35 +17,13 @@
     </div>
 
     <script>
-        const brandName = "AgentSaaS Computer";
+        const brandName = 'AgentSaaS Computer';
         const brandEl = document.getElementById('brand-text');
-        const introEl = document.getElementById('introducing');
-        const cursor = document.getElementById('cursor');
 
-        function typeWriter(text, i, cb) {
-            if (i < text.length) {
-                brandEl.innerHTML += text.charAt(i);
-                setTimeout(() => typeWriter(text, i + 1, cb), 40);
-            } else if (cb) {
-                cb();
-            }
-        }
-        
-        setTimeout(() => {
-            introEl.style.opacity = '1';
-            introEl.style.transform = 'translateY(0)';
-            introEl.style.letterSpacing = '0.4em';
-        }, 100);
-
-        setTimeout(() => {
-            typeWriter(brandName, 0, () => {
-                setTimeout(() => {
-                    if (cursor) {
-                        cursor.style.display = 'none';
-                    }
-                }, 400);
-            });
-        }, 400);
+        window.onTimelineUpdate = (t) => {
+            const index = Math.max(0, Math.min(brandName.length, Math.floor((t - 0.4) / 0.04) + 1));
+            brandEl.textContent = brandName.slice(0, index);
+        };
     </script>
 </body>
 </html>
