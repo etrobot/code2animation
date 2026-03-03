@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface DeterministicIframeProps {
     src: string;
@@ -9,6 +9,12 @@ interface DeterministicIframeProps {
 
 export const DeterministicIframe = ({ src, className = '', title, onLoad }: DeterministicIframeProps) => {
     const iframeRef = useRef<HTMLIFrameElement>(null);
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    useEffect(() => {
+        // Hide iframe whenever src changes to avoid showing about:blank briefly.
+        setIsLoaded(false);
+    }, [src]);
 
     useEffect(() => {
         // Inject sync script when iframe loads
@@ -24,6 +30,7 @@ export const DeterministicIframe = ({ src, className = '', title, onLoad }: Dete
                 scriptEl.type = 'module';
                 scriptEl.src = '/scripts/animation/main.js';
                 doc.head.appendChild(scriptEl);
+                setIsLoaded(true);
 
                 // Notify parent that iframe is ready
                 if (onLoad) {
@@ -31,6 +38,8 @@ export const DeterministicIframe = ({ src, className = '', title, onLoad }: Dete
                 }
             } catch (e) {
                 console.warn('[DeterministicIframe] Failed to inject sync script (possible cross-origin):', e);
+                // Even if script injection fails, still show content once loaded.
+                setIsLoaded(true);
             }
         };
 
@@ -48,6 +57,11 @@ export const DeterministicIframe = ({ src, className = '', title, onLoad }: Dete
             className={className}
             title={title}
             sandbox="allow-scripts allow-same-origin"
+            style={{
+                opacity: isLoaded ? 1 : 0,
+                transition: 'opacity 120ms linear',
+                backgroundColor: 'transparent'
+            }}
         />
     );
 };

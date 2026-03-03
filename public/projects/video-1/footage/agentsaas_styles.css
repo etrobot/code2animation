@@ -516,8 +516,8 @@ body {
 #tasks .task-item:nth-child(1) { --p: clamp(0, calc((var(--t) - 4.17) / 0.3), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 10px)); }
 #tasks .task-item:nth-child(2) { --p: clamp(0, calc((var(--t) - 4.87) / 0.3), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 10px)); }
 #tasks .task-item:nth-child(3) { --p: clamp(0, calc((var(--t) - 5.57) / 0.3), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 10px)); }
-#tasks { opacity: clamp(0, calc(1 - ((var(--t) - 9.77) / 0.2)), 1); }
-.result-area { --p: clamp(0, calc((var(--t) - 10.27) / 0.8), 1); display: block; opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 20px)); }
+#tasks { opacity: clamp(0, calc(1 - ((var(--t) - 8.20) / 0.25)), 1); }
+.result-area { --p: clamp(0, calc((var(--t) - 8.45) / 0.75), 1); display: block; opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 20px)); }
 .model-view { --p: clamp(0, calc((var(--t) - 0.2) / 0.8), 1); opacity: var(--p); transform: translateX(calc((1 - var(--p)) * 20px)); }
 .slack-notification { --p: clamp(0, calc((var(--t) - 0.8) / 0.5), 1); opacity: var(--p); transform: translateX(calc((1 - var(--p)) * 50px)); }
 .video-overlay { --p: clamp(0, calc((var(--t) - 0.5) / 0.5), 1); transform: scale(calc(0.9 + var(--p) * 0.1)); }

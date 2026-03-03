@@ -8,7 +8,7 @@ import { VideoClip } from '@/types';
 import { processClips } from './utils/clipProcessing';
 import { getCurrentRenderState } from './utils/renderState';
 import { generateAudio, loadAudioFiles, checkAudioExists, getSpeechClips } from './utils/audioManager';
-import { calculateTotalDuration, calculateAudioTimings, seekToTime } from './utils/playbackEngine';
+import { calculateTotalDuration, calculateAudioTimings, seekToTime, getGlobalTime } from './utils/playbackEngine';
 
 export default function App() {
   const [audioCache, setAudioCache] = useState<Map<string, HTMLAudioElement>>(new Map());
@@ -117,6 +117,10 @@ export default function App() {
   const CANVAS_HEIGHT = isPortrait ? 1920 : 1080;
 
   const clipDuration = currentClip?.duration || ttsDuration || 0;
+  const globalPlaybackTime = useMemo(
+    () => getGlobalTime(currentClipIndex, currentTime, processedClips),
+    [currentClipIndex, currentTime, processedClips]
+  );
 
   useEffect(() => {
     const updateScale = () => {
@@ -182,7 +186,8 @@ export default function App() {
           try {
             iframe.contentWindow.postMessage({
               type: 'seek',
-              time: currentTime
+              time: currentTime,
+              globalTime: globalPlaybackTime
             }, '*');
           } catch (e) {
             // Ignore cross-origin errors
@@ -195,7 +200,7 @@ export default function App() {
     if (isPlaying || currentTime > 0 || iframesLoaded > 0) {
       syncWithIframes();
     }
-  }, [currentTime, isPlaying, iframesLoaded]);
+  }, [currentTime, globalPlaybackTime, isPlaying, iframesLoaded]);
 
   const handleIframeLoad = () => {
     setIframesLoaded(prev => prev + 1);
@@ -207,14 +212,15 @@ export default function App() {
           try {
             iframe.contentWindow.postMessage({
               type: 'seek',
-              time: currentTime
+              time: currentTime,
+              globalTime: globalPlaybackTime
             }, '*');
           } catch (e) {
             // Ignore cross-origin errors
           }
-        }
-      });
-    }, 100); // Small delay to ensure iframe script is loaded
+          }
+        });
+      }, 100); // Small delay to ensure iframe script is loaded
   };
 
   const togglePlay = async () => {

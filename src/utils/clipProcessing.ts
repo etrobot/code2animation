@@ -1,5 +1,14 @@
 const WORD_DURATION = 0.5;
 
+function normalizeStayCount(stay: unknown) {
+  if (stay === true) return 1;
+  if (stay === false || stay === undefined || stay === null) return 0;
+
+  const parsed = Number(stay);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, Math.floor(parsed));
+}
+
 export function processClips(project: any) {
   const projectName = project.name;
   const basePath = `/projects/${projectName}/footage`;
@@ -13,7 +22,7 @@ export function processClips(project: any) {
       ? Math.max(clip.duration, wordBasedDuration)
       : wordBasedDuration;
     
-    let duration = baseDuration;
+    const duration = baseDuration;
 
     const calculatedMedia: any[] = [];
 
@@ -43,16 +52,8 @@ export function processClips(project: any) {
         // Keep transition2next for handling transitions to next media/clip
         transition2next: m.transition2next,
         duration: m.duration,
-        stay: m.stay || false
+        stay: normalizeStayCount(m.stay)
       });
-    }
-
-    // If the last media has transition2next, extend clip duration by half the transition time
-    // This allows the transition to overlap between clips
-    const lastMedia = calculatedMedia[calculatedMedia.length - 1];
-    if (lastMedia && lastMedia.transition2next && index < project.clips.length - 1) {
-      const transitionDuration = lastMedia.duration || 0.5;
-      duration = baseDuration + (transitionDuration / 2);
     }
 
     return {

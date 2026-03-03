@@ -10,7 +10,7 @@ export interface MediaItem {
   type?: string;
   duration?: number;
   transition2next?: string;
-  stay?: boolean; // Keep previous media visible when next media appears
+  stay?: number; // Number of subsequent media switches this media should remain visible
 }
 
 export interface VideoClip {

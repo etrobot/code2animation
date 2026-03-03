@@ -41,7 +41,7 @@
           "words": "Extract insights from",
           "transition2next": "fade",
           "duration": 0.8,
-          "stay": true
+          "stay": 1
         },
         {
           "src": "agentsaas_slack.html",

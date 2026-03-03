@@ -22,6 +22,35 @@
             </div>
         </div>
     </div>
+
+    <script>
+        const root = document.documentElement;
+        let mediaStartGlobalTime = null;
+        let hasAnchoredStart = false;
+        let prevGlobalTime = 0;
+
+        window.onTimelineUpdate = (t, globalTime) => {
+            const safeClipTime = Number.isFinite(t) ? t : 0;
+            const safeGlobalTime = Number.isFinite(globalTime) ? globalTime : safeClipTime;
+
+            // Anchor local media time to first real global sync value.
+            if (!hasAnchoredStart) {
+                if (safeGlobalTime <= 0.001) {
+                    root.style.setProperty('--t', '0.000000');
+                    return;
+                }
+                mediaStartGlobalTime = safeGlobalTime;
+                hasAnchoredStart = true;
+            } else if (safeGlobalTime < prevGlobalTime - 0.2) {
+                // Re-anchor when seeking backward or replaying.
+                mediaStartGlobalTime = safeGlobalTime;
+            }
+
+            const localTime = Math.max(0, safeGlobalTime - mediaStartGlobalTime);
+            prevGlobalTime = safeGlobalTime;
+            root.style.setProperty('--t', localTime.toFixed(6));
+        };
+    </script>
 </body>
 
 </html>

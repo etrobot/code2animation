@@ -210,6 +210,21 @@ opacity: var(--ease-out);
 </script>
 ```
 
+### Time Semantics (`t` vs `globalTime`)
+- `onTimelineUpdate(t, globalTime)` supports two time domains:
+  - `t`: clip-local time (resets to `0` when clip changes). This is the default for most HTML animations.
+  - `globalTime`: continuous timeline across clips. Use only when an element must stay continuous through cross-clip transitions.
+- Do **not** assume `t` is media-local. If a media appears mid-clip, `t` may already be large when it first becomes visible.
+- For media-local behavior (e.g., toggle starts animating when this media appears), anchor from first visible `globalTime` and derive:
+  - `local = globalTime - mediaStartGlobalTime`
+- Keep fallback for compatibility:
+  ```js
+  window.onTimelineUpdate = (t, globalTime) => {
+    const g = Number.isFinite(globalTime) ? globalTime : t;
+    // use `t` for normal clip-local animation, `g` only when continuity is required
+  };
+  ```
+
 ### Determinism Checklist
 - Seeking to any `t` yields exactly one deterministic frame.
 - Animation state must not depend on "previous frame".
