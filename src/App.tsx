@@ -4,7 +4,7 @@ import { Player } from './components/Player';
 import { useTTS } from './hooks/useTTS';
 import { useProject } from './hooks/useProject';
 import { usePlayback } from './hooks/usePlayback';
-import { VideoClip } from './types';
+import { VideoClip } from '@/types';
 import { processClips } from './utils/clipProcessing';
 import { getCurrentRenderState } from './utils/renderState';
 import { generateAudio, loadAudioFiles, checkAudioExists, getSpeechClips } from './utils/audioManager';

@@ -28,11 +28,6 @@ async function generateAudioForProject(projectId: string) {
   for (let i = 0; i < project.clips.length; i++) {
     const clip = project.clips[i];
     
-    // Skip transition clips - they don't have speech
-    if (clip.type === 'transition') {
-      continue;
-    }
-
     // Only process clips with speech
     if (!clip.speech || typeof clip.speech !== 'string' || !clip.speech.trim()) {
       continue;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { AudioAlignment, VideoClip } from '../types';
+import { AudioAlignment, VideoClip } from '@/types';
 
 interface UseTTSProps {
   clip?: VideoClip;

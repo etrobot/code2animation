@@ -30,25 +30,19 @@ export function calculateTotalDuration(
   let total = 0;
   
   for (const clip of processedClips) {
-    if (clip.type === 'transition') {
-      total += clip.duration || 0.5;
-    } else {
-      // Try to get audio duration from cache
-      if (audioCache && projectId) {
-        const audioIdx = processedClips
-          .slice(0, processedClips.indexOf(clip) + 1)
-          .filter((c: any) => c.type !== 'transition').length - 1;
-        const audio = audioCache.get(`${projectId}-${audioIdx}`);
-        
-        if (audio && audio.duration) {
-          total += audio.duration;
-          continue;
-        }
-      }
+    // Try to get audio duration from cache
+    if (audioCache && projectId) {
+      const audioIdx = processedClips.indexOf(clip);
+      const audio = audioCache.get(`${projectId}-${audioIdx}`);
       
-      // Fallback to clip duration
-      total += clip.duration || 4;
+      if (audio && audio.duration) {
+        total += audio.duration;
+        continue;
+      }
     }
+    
+    // Fallback to clip duration
+    total += clip.duration || 4;
   }
   
   return total;
@@ -71,22 +65,18 @@ export function calculateAudioTimings(
   let audioIndex = 0;
   
   for (const clip of processedClips) {
-    if (clip.type === 'transition') {
-      currentTime += clip.duration || 0.5;
-    } else {
-      const audio = audioCache.get(`${projectId}-${audioIndex}`);
-      const duration = audio?.duration || clip.duration || 4;
-      
-      timings.push({
-        clipIndex: audioIndex,
-        duration,
-        startTime: currentTime,
-        endTime: currentTime + duration
-      });
-      
-      currentTime += duration;
-      audioIndex++;
-    }
+    const audio = audioCache.get(`${projectId}-${audioIndex}`);
+    const duration = audio?.duration || clip.duration || 4;
+    
+    timings.push({
+      clipIndex: audioIndex,
+      duration,
+      startTime: currentTime,
+      endTime: currentTime + duration
+    });
+    
+    currentTime += duration;
+    audioIndex++;
   }
   
   return timings;
@@ -114,19 +104,12 @@ export function seekToTime(
     const clip = processedClips[i];
     let clipDuration = 0;
     
-    if (clip.type === 'transition') {
-      clipDuration = clip.duration || 0.5;
+    // Try to get audio duration from cache
+    if (audioCache && projectId) {
+      const audio = audioCache.get(`${projectId}-${i}`);
+      clipDuration = audio?.duration || clip.duration || 4;
     } else {
-      // Try to get audio duration from cache
-      if (audioCache && projectId) {
-        const audioIdx = processedClips
-          .slice(0, i + 1)
-          .filter((c: any) => c.type !== 'transition').length - 1;
-        const audio = audioCache.get(`${projectId}-${audioIdx}`);
-        clipDuration = audio?.duration || clip.duration || 4;
-      } else {
-        clipDuration = clip.duration || 4;
-      }
+      clipDuration = clip.duration || 4;
     }
     
     if (accumulated + clipDuration >= targetTime) {
@@ -165,18 +148,11 @@ export function getGlobalTime(
   for (let i = 0; i < clipIndex; i++) {
     const clip = processedClips[i];
     
-    if (clip.type === 'transition') {
-      accumulated += clip.duration || 0.5;
+    if (audioCache && projectId) {
+      const audio = audioCache.get(`${projectId}-${i}`);
+      accumulated += audio?.duration || clip.duration || 4;
     } else {
-      if (audioCache && projectId) {
-        const audioIdx = processedClips
-          .slice(0, i + 1)
-          .filter((c: any) => c.type !== 'transition').length - 1;
-        const audio = audioCache.get(`${projectId}-${audioIdx}`);
-        accumulated += audio?.duration || clip.duration || 4;
-      } else {
-        accumulated += clip.duration || 4;
-      }
+      accumulated += clip.duration || 4;
     }
   }
   

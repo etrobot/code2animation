@@ -1,30 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
-
-// Type definitions for the video project structure
-interface MediaItem {
-  src?: string;
-  words?: string[];
-  type?: string;
-  transitionType?: string;
-  duration?: number;
-}
-
-interface VideoClip {
-  type: string;
-  speech?: string;
-  media?: MediaItem[];
-  transitionType?: string;
-  duration?: number;
-  voice?: string;
-}
-
-interface VideoProject {
-  name: string;
-  background?: string;
-  clips: VideoClip[];
-}
+import type { VideoProject } from '@/types';
 
 async function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) {
@@ -86,12 +63,6 @@ async function generateAudioForProject(projectId: string) {
   for (let i = 0; i < project.clips.length; i++) {
     const clip = project.clips[i];
     
-    // Skip transition clips - they don't have speech
-    if (clip.type === 'transition') {
-      console.log(`Skipping transition clip ${i + 1}`);
-      continue;
-    }
-
     // Only process clips with speech
     if (!clip.speech || typeof clip.speech !== 'string' || !clip.speech.trim()) {
       console.log(`Skipping clip ${i + 1} (no speech)`);

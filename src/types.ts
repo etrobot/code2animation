@@ -4,14 +4,27 @@ export interface AudioAlignment {
   character_end_times_seconds: number[];
 }
 
+export interface MediaItem {
+  src?: string;
+  words?: string;
+  type?: string;
+  duration?: number;
+  transition2next?: string;
+  stay?: boolean; // Keep previous media visible when next media appears
+}
+
 export interface VideoClip {
   type: string;
   speech?: string;
-  media?: any[];
+  media?: MediaItem[];
   voice?: string;
   duration?: number;
-  transitionType?: string;
-  keepPrev?: boolean;
+}
+
+export interface VideoProject {
+  name: string;
+  background?: string;
+  clips: VideoClip[];
 }
 
 export interface WordBoundaryEvent {

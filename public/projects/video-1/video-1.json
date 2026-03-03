@@ -7,71 +7,56 @@
       "speech": "Introducing the Agent SaaS computer. A new way to interact with your data and workflows.",
       "media": [
         {
-          "file": "agentsaas_intro_text.html",
-          "words": "Introducing the Agent"
-        },
-        {
-          "type": "transition",
-          "transitionType": "fade",
+          "src": "agentsaas_intro_text.html",
+          "words": "Introducing the Agent",
+          "transition2next": "fade",
           "duration": 0.5
         },
         {
-          "file": "agentsaas_intro_toggle.html",
-          "words": "new way to"
+          "src": "agentsaas_intro_toggle.html",
+          "words": "new way to",
+          "transition2next": "fade",
+          "duration": 0.8
         }
       ]
-    },
-    {
-      "type": "transition",
-      "transitionType": "fade",
-      "duration": 0.8
     },
     {
       "type": "footage",
       "speech": "From complex financial research to autonomous subagent execution. We handle the heavy lifting while you focus on the strategy.",
       "media": [
         {
-          "file": "agentsaas_complex_task.html",
-          "words": "complex financial research"
+          "src": "agentsaas_complex_task.html",
+          "words": "complex financial research",
+          "transition2next": "slideUp",
+          "duration": 0.6
         }
       ]
-    },
-    {
-      "type": "transition",
-      "transitionType": "slideUp",
-      "duration": 0.6
     },
     {
       "type": "footage",
       "speech": "Extract insights from any source, automate your life, and stay connected with native integrations that work where you do.",
       "media": [
         {
-          "file": "agentsaas_multimedia.html",
-          "words": "Extract insights from"
-        },
-        {
-          "type": "transition",
-          "transitionType": "fade",
+          "src": "agentsaas_multimedia.html",
+          "words": "Extract insights from",
+          "transition2next": "fade",
           "duration": 0.8,
-          "keepPrev": true
+          "stay": true
         },
         {
-          "file": "agentsaas_slack.html",
-          "words": "stay connected with"
+          "src": "agentsaas_slack.html",
+          "words": "stay connected with",
+          "transition2next": "slideRight",
+          "duration": 0.7
         }
       ]
-    },
-    {
-      "type": "transition",
-      "transitionType": "slideRight",
-      "duration": 0.7
     },
     {
       "type": "footage",
       "speech": "Experience the next generation of autonomous building. Computer researches, computer builds. Join the future today.",
       "media": [
         {
-          "file": "agentsaas_ending.html",
+          "src": "agentsaas_ending.html",
           "words": "Experience the next"
         }
       ]
