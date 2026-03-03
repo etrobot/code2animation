@@ -246,31 +246,37 @@ export function getCurrentRenderState(
 }
 
 export function getTransitionStyles(type: string, progress: number, stay?: boolean): any {
+  const p = Math.min(Math.max(progress, 0), 1);
+  const eased = p < 0.5
+    ? 2 * p * p
+    : 1 - Math.pow(-2 * p + 2, 2) / 2;
+  const inv = 1 - eased;
+
   // If stay is true, previous media stays at full opacity and position
   if (stay) {
     switch (type) {
       case 'fade':
         return {
           from: { opacity: 1 },
-          to: { opacity: progress }
+          to: { opacity: eased }
         };
       case 'slideUp':
         return {
           from: { transform: 'translateY(0)', opacity: 1 },
-          to: { transform: `translateY(${100 - progress * 100}%)`, opacity: progress }
+          to: { transform: `translateY(${(1 - eased) * 16}px)`, opacity: eased }
         };
       case 'slideRight':
         return {
           from: { transform: 'translateX(0)', opacity: 1 },
-          to: { transform: `translateX(-${100 - progress * 100}%)`, opacity: progress }
+          to: { transform: `translateX(${(1 - eased) * 24}px)`, opacity: eased }
         };
       case 'zoomIn':
         return {
           from: { opacity: 1, transform: 'scale(1)' },
-          to: { opacity: progress, transform: `scale(${0.5 + progress * 0.5})` }
+          to: { opacity: eased, transform: `scale(${0.92 + eased * 0.08})` }
         };
       default:
-        return { from: { opacity: 1 }, to: { opacity: progress } };
+        return { from: { opacity: 1 }, to: { opacity: eased } };
     }
   }
 
@@ -278,25 +284,25 @@ export function getTransitionStyles(type: string, progress: number, stay?: boole
   switch (type) {
     case 'fade':
       return {
-        from: { opacity: 1 - progress },
-        to: { opacity: progress }
+        from: { opacity: inv },
+        to: { opacity: eased }
       };
     case 'slideUp':
       return {
-        from: { transform: `translateY(-${progress * 100}%)`, opacity: 1 - progress },
-        to: { transform: `translateY(${100 - progress * 100}%)`, opacity: progress }
+        from: { transform: `translateY(${-eased * 16}px)`, opacity: inv },
+        to: { transform: `translateY(${(1 - eased) * 16}px)`, opacity: eased }
       };
     case 'slideRight':
       return {
-        from: { transform: `translateX(${progress * 100}%)`, opacity: 1 - progress },
-        to: { transform: `translateX(-${100 - progress * 100}%)`, opacity: progress }
+        from: { transform: `translateX(${eased * 24}px)`, opacity: inv },
+        to: { transform: `translateX(${(1 - eased) * -24}px)`, opacity: eased }
       };
     case 'zoomIn':
       return {
-        from: { opacity: 1 - progress, transform: `scale(${1 + progress * 0.5})` },
-        to: { opacity: progress, transform: `scale(${0.5 + progress * 0.5})` }
+        from: { opacity: inv, transform: `scale(${1 + eased * 0.06})` },
+        to: { opacity: eased, transform: `scale(${0.94 + eased * 0.06})` }
       };
     default:
-      return { from: { opacity: 1 - progress }, to: { opacity: progress } };
+      return { from: { opacity: inv }, to: { opacity: eased } };
   }
 }

@@ -96,6 +96,36 @@ export function seekToTime(
   audioCache?: Map<string, HTMLAudioElement>,
   projectId?: string
 ): PlaybackState {
+  if (processedClips.length === 0) {
+    return { clipIndex: 0, localTime: 0 };
+  }
+
+  if (targetTime <= 0) {
+    return { clipIndex: 0, localTime: 0 };
+  }
+
+  let totalDuration = 0;
+  for (let i = 0; i < processedClips.length; i++) {
+    const clip = processedClips[i];
+    const clipDuration = (audioCache && projectId)
+      ? (audioCache.get(`${projectId}-${i}`)?.duration || clip.duration || 4)
+      : (clip.duration || 4);
+    totalDuration += clipDuration;
+  }
+
+  if (targetTime >= totalDuration) {
+    const lastIndex = processedClips.length - 1;
+    const lastClip = processedClips[lastIndex];
+    const lastDuration = (audioCache && projectId)
+      ? (audioCache.get(`${projectId}-${lastIndex}`)?.duration || lastClip.duration || 4)
+      : (lastClip.duration || 4);
+
+    return {
+      clipIndex: lastIndex,
+      localTime: lastDuration
+    };
+  }
+
   let accumulated = 0;
   let targetClipIndex = 0;
   let localTime = 0;

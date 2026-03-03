@@ -24,6 +24,22 @@
             </div>
         </div>
     </div>
+
+    <script>
+        const optSearch = document.getElementById('opt-search');
+        const optComputer = document.getElementById('opt-computer');
+
+        window.onTimelineUpdate = (t) => {
+            // Keep text color switch deterministic and seek-safe.
+            if (t >= 0.98) {
+                optSearch.classList.remove('active-text');
+                optComputer.classList.add('active-text');
+            } else {
+                optSearch.classList.add('active-text');
+                optComputer.classList.remove('active-text');
+            }
+        };
+    </script>
 </body>
 
 </html>

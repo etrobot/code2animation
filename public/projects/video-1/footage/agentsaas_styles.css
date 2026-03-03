@@ -511,8 +511,6 @@ body {
 .search-title { --p: clamp(0, calc((var(--t) - 0.1) / 0.5), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 20px)); }
 .toggle-container { --p: clamp(0, calc((var(--t) - 0.4) / 0.5), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 20px)) scale(calc(0.95 + var(--p) * 0.05)); }
 .toggle-pill { --p: clamp(0, calc((var(--t) - 0.8) / 0.6), 1); transform: translateX(calc(var(--p) * 100%)); background: color-mix(in srgb, rgba(255, 255, 255, 0.1) calc((1 - var(--p)) * 100%), #10b981 calc(var(--p) * 100%)); box-shadow: 0 0 calc(var(--p) * 20px) rgba(16, 185, 129, calc(var(--p) * 0.4)); }
-#opt-search { color: color-mix(in srgb, #000 calc((1 - clamp(0, calc((var(--t) - 0.98) / 0.18), 1)) * 100%), #fff calc(clamp(0, calc((var(--t) - 0.98) / 0.18), 1) * 100%)); }
-#opt-computer { color: color-mix(in srgb, #fff calc((1 - clamp(0, calc((var(--t) - 0.98) / 0.18), 1)) * 100%), #000 calc(clamp(0, calc((var(--t) - 0.98) / 0.18), 1) * 100%)); }
 .subagents-header { --p: clamp(0, calc((var(--t) - 3.67) / 0.5), 1); opacity: var(--p); transform: translateX(calc((1 - var(--p)) * -20px)); }
 #tasks .task-item { color: #e5e7eb; }
 #tasks .task-item:nth-child(1) { --p: clamp(0, calc((var(--t) - 4.17) / 0.3), 1); opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 10px)); }
