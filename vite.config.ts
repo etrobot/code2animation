@@ -2,127 +2,11 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import fs from 'fs';
-import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 
-// Audio generation function (extracted from generate-audio.ts)
-async function generateAudioForProject(projectId: string) {
-  const projectPath = path.resolve(process.cwd(), 'public', 'projects', projectId, `${projectId}.json`);
-  
-  if (!fs.existsSync(projectPath)) {
-    throw new Error(`Project file not found: ${projectPath}`);
-  }
-
-  const project = JSON.parse(fs.readFileSync(projectPath, 'utf-8'));
-  
-  console.log(`Generating audio for project: ${project.name} (${projectId})`);
-  
-  const OUTPUT_DIR = path.resolve(process.cwd(), 'public/projects', projectId, 'audio');
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
-
-  let clipIndex = 0;
-  const results = [];
-
-  for (let i = 0; i < project.clips.length; i++) {
-    const clip = project.clips[i];
-    
-    // Only process clips with speech
-    if (!clip.speech || typeof clip.speech !== 'string' || !clip.speech.trim()) {
-      continue;
-    }
-
-    const speechText = clip.speech.trim();
-    const isChinese = /[\u4e00-\u9fa5]/.test(speechText);
-    const voice = clip.voice || (isChinese ? 'zh-CN-YunjianNeural' : 'en-US-GuyNeural');
-
-    console.log(`Generating clip ${clipIndex} using voice: ${voice}...`);
-
-    try {
-      const tts = new MsEdgeTTS();
-      
-      await tts.setMetadata(
-        voice,
-        OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3
-      );
-
-      const audioPath = path.join(OUTPUT_DIR, `${clipIndex}.mp3`);
-
-      const ssml = `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='${isChinese ? 'zh-CN' : 'en-US'}'>
-        <voice name='${voice}'>
-          <prosody pitch='+0Hz' rate='+0%' volume='+0%'>
-            ${speechText}
-          </prosody>
-        </voice>
-      </speak>`;
-
-      const result = await tts.rawToStream(ssml);
-      const audioFile = fs.createWriteStream(audioPath);
-      const metadata: any[] = [];
-
-      // Handle metadata if available
-      if (result.metadataStream) {
-        result.metadataStream.on('data', (data) => {
-          let content = data;
-          if (Buffer.isBuffer(data)) {
-            content = data.toString('utf8');
-          }
-          if (typeof content === 'string') {
-            try {
-              const parsed = JSON.parse(content);
-              metadata.push(parsed);
-            } catch (e) {
-              // Ignore non-json chunks
-            }
-          } else {
-            metadata.push(content);
-          }
-        });
-      }
-
-      await new Promise((resolve, reject) => {
-        result.audioStream.pipe(audioFile);
-        result.audioStream.on('end', resolve);
-        result.audioStream.on('error', reject);
-      });
-
-      // Save metadata if we have any
-      if (metadata.length > 0) {
-        const metaPath = path.join(OUTPUT_DIR, `${clipIndex}.json`);
-        fs.writeFileSync(metaPath, JSON.stringify(metadata, null, 2));
-        console.log(`✅ Saved metadata: ${metaPath}`);
-      }
-
-      // Save clip info for reference
-      const clipInfoPath = path.join(OUTPUT_DIR, `${clipIndex}_info.json`);
-      fs.writeFileSync(clipInfoPath, JSON.stringify({
-        originalClipIndex: i,
-        clipIndex,
-        speech: speechText,
-        voice,
-        audioFile: `${clipIndex}.mp3`,
-        metadataFile: metadata.length > 0 ? `${clipIndex}.json` : null
-      }, null, 2));
-
-      results.push({
-        clipIndex,
-        originalClipIndex: i,
-        speech: speechText.substring(0, 100),
-        audioFile: `${clipIndex}.mp3`
-      });
-
-      console.log(`✅ Generated: ${audioPath}`);
-      clipIndex++;
-
-    } catch (err) {
-      console.error(`❌ Error generating audio for clip ${i}:`, err);
-      throw err;
-    }
-  }
-
-  return { projectId, generatedFiles: results.length, results };
-}
+const execAsync = promisify(exec);
 
 export default defineConfig(({mode}) => {
   const env = loadEnv(mode, '.', '');
@@ -134,7 +18,60 @@ export default defineConfig(({mode}) => {
       {
         name: 'audio-api',
         configureServer(server) {
-          server.middlewares.use('/api/generate-audio', async (req, res, next) => {
+          // API: List all available projects
+          server.middlewares.use('/api/projects', async (req, res) => {
+            if (req.method !== 'GET') {
+              res.statusCode = 405;
+              res.end('Method Not Allowed');
+              return;
+            }
+
+            try {
+              const projectsDir = path.resolve(process.cwd(), 'public/projects');
+              
+              if (!fs.existsSync(projectsDir)) {
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ projects: [] }));
+                return;
+              }
+
+              const entries = fs.readdirSync(projectsDir, { withFileTypes: true });
+              const projects = entries
+                .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+                .map(entry => {
+                  const projectId = entry.name;
+                  const jsonPath = path.join(projectsDir, projectId, `${projectId}.json`);
+                  
+                  // Check if project JSON exists
+                  if (fs.existsSync(jsonPath)) {
+                    try {
+                      const projectData = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+                      return {
+                        id: projectId,
+                        name: projectData.name || projectId,
+                        description: projectData.description || ''
+                      };
+                    } catch (e) {
+                      console.error(`Failed to parse ${jsonPath}:`, e);
+                      return null;
+                    }
+                  }
+                  return null;
+                })
+                .filter(Boolean);
+
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ projects }));
+            } catch (error: any) {
+              console.error('[API] Failed to list projects:', error);
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: 'Failed to list projects', details: error.message }));
+            }
+          });
+
+          // API: Generate audio for a project
+          server.middlewares.use('/api/generate-audio', async (req, res) => {
             console.log('[API] Received request:', req.method, req.url);
             
             if (req.method !== 'POST') {
@@ -163,21 +100,43 @@ export default defineConfig(({mode}) => {
                 }
 
                 console.log(`[API] Starting audio generation for project: ${projectId}`);
-                const result = await generateAudioForProject(projectId);
                 
-                console.log('[API] Audio generation completed:', result);
-                res.setHeader('Content-Type', 'application/json');
-                res.end(JSON.stringify({ 
-                  success: true, 
-                  message: `Generated ${result.generatedFiles} audio files`,
-                  ...result 
-                }));
-              } catch (error) {
-                console.error('[API] Audio generation failed:', error);
+                // Call the generate-audio script
+                const scriptPath = path.resolve(process.cwd(), 'scripts/generate-audio.ts');
+                const command = `npx tsx "${scriptPath}" ${projectId}`;
+                
+                try {
+                  const { stdout, stderr } = await execAsync(command);
+                  
+                  if (stderr) {
+                    console.error('[API] Script stderr:', stderr);
+                  }
+                  
+                  console.log('[API] Script stdout:', stdout);
+                  console.log('[API] Audio generation completed');
+                  
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ 
+                    success: true, 
+                    message: `Audio generation completed for ${projectId}`,
+                    output: stdout
+                  }));
+                } catch (execError: any) {
+                  console.error('[API] Script execution failed:', execError);
+                  res.statusCode = 500;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ 
+                    error: 'Audio generation failed', 
+                    details: execError.message,
+                    stderr: execError.stderr
+                  }));
+                }
+              } catch (error: any) {
+                console.error('[API] Request processing failed:', error);
                 res.statusCode = 500;
                 res.setHeader('Content-Type', 'application/json');
                 res.end(JSON.stringify({ 
-                  error: 'Audio generation failed', 
+                  error: 'Request processing failed', 
                   details: error.message 
                 }));
               }

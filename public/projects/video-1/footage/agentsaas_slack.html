@@ -31,21 +31,52 @@
             if (hasAnimated) return;
             hasAnimated = true;
             
-            setTimeout(() => {
-                slack.style.opacity = '1';
-                slack.style.transform = 'translateX(0)';
-            }, 100);
+            console.log('[Slack] Starting notification animation');
+            
+            // Slack notification slide-in animation
+            window.registerFrameAnimation(slack, (frame, elapsed) => {
+                if (elapsed >= 0.1) { // 100ms delay
+                    const progress = Math.min((elapsed - 0.1) / 0.5, 1); // 500ms duration
+                    
+                    // Apply easing (cubic-bezier approximation for smooth slide-in)
+                    const easedProgress = progress < 0.5 
+                        ? 2 * progress * progress 
+                        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                    
+                    // Fade in
+                    slack.style.opacity = easedProgress;
+                    
+                    // Slide in from right (100px to 0)
+                    const translateX = 100 * (1 - easedProgress);
+                    slack.style.transform = `translateX(${translateX}px)`;
+                }
+            }, 0.6); // Total duration: 100ms delay + 500ms animation
         }
 
-        if (window.location.search.includes('autoplay=false')) {
-            window.addEventListener('message', (event) => {
-                if (event.data && event.data.type === 'play') {
-                    startAnimation();
-                }
-            });
-        } else {
-            startAnimation();
+        // Wait for animation system to load
+        function initializeAnimations() {
+            if (!window.registerFrameAnimation) {
+                requestAnimationFrame(initializeAnimations);
+                return;
+            }
+            
+            console.log('[Slack] Animation system ready');
+            
+            if (window.location.search.includes('autoplay=false')) {
+                console.log('[Slack] Autoplay disabled, waiting for play message');
+                window.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'play') {
+                        console.log('[Slack] Received play message');
+                        startAnimation();
+                    }
+                });
+            } else {
+                console.log('[Slack] Autoplay enabled, starting animation');
+                startAnimation();
+            }
         }
+        
+        initializeAnimations();
     </script>
 </body>
 

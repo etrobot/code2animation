@@ -33,32 +33,88 @@
         const optComputer = document.getElementById('opt-computer');
 
         function startAnimation() {
-            setTimeout(() => {
-                searchTitle.style.opacity = '1';
-                searchTitle.style.transform = 'translateY(0)';
-
-                setTimeout(() => {
-                    toggleContainer.style.opacity = '1';
-                    toggleContainer.style.transform = 'translateY(0) scale(1)';
-
-                    setTimeout(() => {
-                        togglePill.classList.add('active');
-                        optSearch.classList.remove('active-text');
-                        optComputer.classList.add('active-text');
-                    }, 400);
-                }, 300);
-            }, 100);
-        }
-
-        if (window.location.search.includes('autoplay=false')) {
-            window.addEventListener('message', (event) => {
-                if (event.data && event.data.type === 'play') {
-                    startAnimation();
+            console.log('[Toggle] Starting animation sequence');
+            
+            // Main animation sequence using frame-based animations
+            window.registerFrameAnimation(document.body, (frame, elapsed) => {
+                // Search title animation (starts at 100ms)
+                if (elapsed >= 0.1) {
+                    const titleProgress = Math.min((elapsed - 0.1) / 0.5, 1); // 500ms duration
+                    searchTitle.style.opacity = titleProgress;
+                    const titleY = 20 * (1 - titleProgress); // Move from 20px to 0
+                    searchTitle.style.transform = `translateY(${titleY}px)`;
+                }
+                
+                // Toggle container animation (starts at 400ms = 100ms + 300ms)
+                if (elapsed >= 0.4) {
+                    const containerProgress = Math.min((elapsed - 0.4) / 0.5, 1); // 500ms duration
+                    toggleContainer.style.opacity = containerProgress;
+                    const containerY = 20 * (1 - containerProgress); // Move from 20px to 0
+                    const containerScale = 0.95 + (0.05 * containerProgress); // Scale from 0.95 to 1
+                    toggleContainer.style.transform = `translateY(${containerY}px) scale(${containerScale})`;
+                }
+                
+                // Toggle pill animation (starts at 800ms = 100ms + 300ms + 400ms)
+                if (elapsed >= 0.8) {
+                    if (!window.toggleAnimated) {
+                        window.toggleAnimated = true;
+                        console.log('[Toggle] Activating toggle pill');
+                        
+                        // Animate the pill movement using frame animation
+                        window.registerFrameAnimation(togglePill, (frame, pillElapsed) => {
+                            const pillProgress = Math.min(pillElapsed / 0.6, 1); // 600ms duration
+                            const translateX = 100 * pillProgress; // Move from 0% to 100%
+                            
+                            // Apply easing (cubic-bezier approximation)
+                            const easedProgress = pillProgress < 0.5 
+                                ? 2 * pillProgress * pillProgress 
+                                : 1 - Math.pow(-2 * pillProgress + 2, 2) / 2;
+                            
+                            const easedTranslateX = 100 * easedProgress;
+                            togglePill.style.transform = `translateX(${easedTranslateX}%)`;
+                            
+                            // Change background color during animation
+                            if (pillProgress > 0.5) {
+                                togglePill.style.background = '#10b981';
+                                togglePill.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.4)';
+                            }
+                            
+                            // Update text colors at the right moment
+                            if (pillProgress > 0.3 && !window.textColorsChanged) {
+                                window.textColorsChanged = true;
+                                optSearch.classList.remove('active-text');
+                                optComputer.classList.add('active-text');
+                            }
+                        }, 0.6);
+                    }
                 }
             });
-        } else {
-            startAnimation();
         }
+
+        // Wait for animation system to load
+        function initializeAnimations() {
+            if (!window.registerFrameAnimation) {
+                requestAnimationFrame(initializeAnimations);
+                return;
+            }
+            
+            console.log('[Toggle] Animation system ready');
+            
+            if (window.location.search.includes('autoplay=false')) {
+                console.log('[Toggle] Autoplay disabled, waiting for play message');
+                window.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'play') {
+                        console.log('[Toggle] Received play message');
+                        startAnimation();
+                    }
+                });
+            } else {
+                console.log('[Toggle] Autoplay enabled, starting animation');
+                startAnimation();
+            }
+        }
+        
+        initializeAnimations();
     </script>
 </body>
 

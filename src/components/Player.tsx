@@ -1,13 +1,15 @@
 import { MediaRenderer } from './MediaRenderer';
+import { DeterministicIframe } from './DeterministicIframe';
 
 interface PlayerProps {
   renderState: any;
   background: string;
   resetCounter: number;
   isPlaying: boolean;
+  onIframeLoad?: () => void;
 }
 
-export const Player = ({ renderState, background, resetCounter, isPlaying }: PlayerProps) => {
+export const Player = ({ renderState, background, resetCounter, isPlaying, onIframeLoad }: PlayerProps) => {
   if (!renderState || !renderState.activeMedias) return <div className="absolute inset-0 bg-black" />;
 
   return (
@@ -15,11 +17,11 @@ export const Player = ({ renderState, background, resetCounter, isPlaying }: Pla
       {/* Background */}
       <div className="absolute inset-0">
         {background && background.endsWith('.html') ? (
-          <iframe 
-            src={background} 
-            className="w-full h-full border-none" 
+          <DeterministicIframe
+            src={background}
+            className="w-full h-full border-none"
             title="Background"
-            sandbox="allow-scripts allow-same-origin"
+            onLoad={onIframeLoad}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center opacity-30">
@@ -27,15 +29,16 @@ export const Player = ({ renderState, background, resetCounter, isPlaying }: Pla
           </div>
         )}
       </div>
-      
+
       {/* Media Layer */}
       <div className="absolute inset-0">
         {renderState.activeMedias.map(({ media, style }: any, index: number) => (
-          <MediaRenderer 
-            key={media.id || `media-${index}`} 
-            media={media} 
-            style={style} 
+          <MediaRenderer
+            key={media.id || `media-${index}`}
+            media={media}
+            style={style}
             isPlaying={isPlaying}
+            onIframeLoad={onIframeLoad}
           />
         ))}
       </div>

@@ -38,13 +38,13 @@ fs.mkdirSync(FRAMES_DIR, { recursive: true });
 
 function detectBrowserExecutable() {
   if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
-  
+
   const platform = os.platform();
   const arch = os.arch();
-  
+
   // For x64 architecture, let Puppeteer handle it automatically
   if (arch === 'x64') return undefined;
-  
+
   if (platform === 'darwin') {
     // macOS browser detection
     const macCandidates = [
@@ -57,7 +57,7 @@ function detectBrowserExecutable() {
       '/opt/homebrew/bin/chromium',
       '/opt/homebrew/bin/google-chrome'
     ];
-    
+
     for (const path of macCandidates) {
       try {
         if (fs.existsSync(path)) {
@@ -66,14 +66,14 @@ function detectBrowserExecutable() {
         }
       } catch { }
     }
-    
+
     // Try using which command for Homebrew installations
     const brewCandidates = [
       'chromium',
       'google-chrome',
       'brave-browser'
     ];
-    
+
     for (const name of brewCandidates) {
       try {
         const result = execSync(`which ${name}`, { encoding: 'utf-8' }).trim();
@@ -87,12 +87,12 @@ function detectBrowserExecutable() {
     // Linux browser detection
     const linuxCandidates = [
       'brave-browser',
-      'chromium-browser', 
+      'chromium-browser',
       'chromium',
       'google-chrome',
       'google-chrome-stable'
     ];
-    
+
     for (const name of linuxCandidates) {
       try {
         const result = execSync(`which ${name}`, { encoding: 'utf-8' }).trim();
@@ -103,7 +103,7 @@ function detectBrowserExecutable() {
       } catch { }
     }
   }
-  
+
   console.warn('No suitable browser found, using Puppeteer default');
   return undefined;
 }
@@ -125,28 +125,28 @@ async function findFreePort(startPort: number): Promise<number> {
 async function main() {
   // Load project config to check expected audio count
   const projectConfigPath = path.resolve(process.cwd(), 'public', 'projects', projectId, `${projectId}.json`);
-  
+
   if (!fs.existsSync(projectConfigPath)) {
     console.error(`❌ Project config not found: ${projectConfigPath}`);
     process.exit(1);
   }
-  
+
   const projectConfig = JSON.parse(fs.readFileSync(projectConfigPath, 'utf-8'));
   const expectedAudioCount = projectConfig.clips.filter((c: any) => c.type !== 'transition' && c.speech).length;
-  
+
   // Check if audio exists
   const audioDir = path.resolve(process.cwd(), 'public', 'projects', projectId, 'audio');
-  const existingAudioFiles = fs.existsSync(audioDir) 
+  const existingAudioFiles = fs.existsSync(audioDir)
     ? fs.readdirSync(audioDir).filter(f => f.endsWith('.mp3'))
     : [];
-  
+
   const needsGeneration = existingAudioFiles.length < expectedAudioCount;
-  
+
   if (needsGeneration) {
     console.log(`\n⚠️  Audio files incomplete for project "${projectId}"`);
     console.log(`   Expected: ${expectedAudioCount} files, Found: ${existingAudioFiles.length} files`);
     console.log(`📢 Generating audio using TTS...\n`);
-    
+
     try {
       execSync(`npm run generate-audio ${projectId}`, { stdio: 'inherit' });
       console.log(`\n✅ Audio generation completed!\n`);
@@ -158,26 +158,26 @@ async function main() {
   } else {
     console.log(`✅ Audio files complete for project "${projectId}" (${existingAudioFiles.length}/${expectedAudioCount})`);
   }
-  
+
   const PORT = await findFreePort(BASE_PORT);
   const BASE_URL = `http://localhost:${PORT}/?record=true&orientation=${isPortrait ? 'portrait' : 'landscape'}&project=${projectId}`;
-  
+
   console.log(`Starting Vite server on port ${PORT}...`);
   const server = spawn('npm', ['run', 'dev', '--', '--port', String(PORT)], {
     stdio: ['ignore', 'pipe', 'pipe'],
     shell: true
   });
-  
+
   await new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(() => reject(new Error('Server start timeout')), 20000);
-    
+
     server.stdout?.on('data', (data) => {
       if (data.toString().includes('Local:') || data.toString().includes('ready in')) {
         clearTimeout(timeout);
         resolve();
       }
     });
-    
+
     server.stderr?.on('data', (data) => {
       const msg = data.toString();
       if (msg.includes('EADDRINUSE')) {
@@ -186,7 +186,7 @@ async function main() {
       }
     });
   });
-  
+
   console.log('Launching browser for frame-by-frame rendering...');
   const executablePath = detectBrowserExecutable();
   const browser = await puppeteer.launch({
@@ -206,101 +206,137 @@ async function main() {
     ],
     defaultViewport: null
   });
-  
+
   const page = await browser.newPage();
   page.setDefaultTimeout(180000);
   await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1 });
-  
+
   console.log(`Navigating to ${BASE_URL}...`);
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
-  
+
   console.log('Waiting for app to be ready...');
   await Promise.race([
     page.waitForFunction(() => typeof (window as any).seekTo === 'function', { timeout: 30000 }),
     page.waitForSelector('.ready-to-record', { timeout: 30000 })
   ]);
-  
+
+  // Wait for audioInitialized to be set (record mode auto-initializes it)
+  await page.waitForFunction(() => {
+    // Check that renderState is actually computing (not empty)
+    const seekTo = (window as any).seekTo;
+    if (typeof seekTo !== 'function') return false;
+    // Try seeking to 0 and check if the DOM has media content
+    seekTo(0);
+    return true;
+  }, { timeout: 10000 });
+
+  // Small wait for React to re-render after audioInitialized
+  await new Promise(r => setTimeout(r, 500));
+
   // Prepare app for deterministic rendering
   await page.evaluate(() => {
     (window as any).suppressTTS = true;
   });
-  
+
   const totalDuration = await page.evaluate(() => {
     return (window as any).getTotalDuration();
   });
-  
+
   if (totalDuration === 0) {
     console.error('Project has 0 duration. Check your project config.');
     await browser.close();
     server.kill();
     process.exit(1);
   }
-  
+
   console.log(`Total duration: ${totalDuration.toFixed(2)}s. Starting frame capture...`);
   const totalFrames = Math.ceil(totalDuration * FPS);
-  
+
   for (let i = 0; i <= totalFrames; i++) {
     const time = i / FPS;
-    
-    await page.evaluate((t) => {
-      if (typeof (window as any).seekTo === 'function') {
-        (window as any).seekTo(t);
+
+    await page.evaluate(`(async (t) => {
+      if (typeof window.seekTo === 'function') {
+        window.seekTo(t);
+        
+        const iframes = Array.from(document.querySelectorAll('iframe'));
+        if (iframes.length === 0) return;
+
+        await Promise.all(iframes.map(iframe => {
+          return new Promise((resolve) => {
+            const handler = (event) => {
+              if (event.data && event.data.type === 'iframeSynced') {
+                window.removeEventListener('message', handler);
+                resolve();
+              }
+            };
+            window.addEventListener('message', handler);
+            setTimeout(resolve, 500);
+            try {
+              iframe.contentWindow.postMessage({ type: 'seek', time: t }, '*');
+            } catch (e) {
+              resolve();
+            }
+          });
+        }));
       } else {
-        throw new Error('window.seekTo is not available - page may have reloaded');
+        throw new Error('window.seekTo is not available');
       }
-    }, time);
-    
-    // Wait for iframes to load and animate
+    })(${time})`);
+
+    // Wait for React to paint the final state
     await new Promise(r => setTimeout(r, 100));
-    
+
     if (i % 10 === 0) {
       process.stdout.write(`\rRendering frame ${i}/${totalFrames} (${((i / totalFrames) * 100).toFixed(1)}%)`);
     }
-    
+
     const framePath = path.join(FRAMES_DIR, `frame-${String(i).padStart(5, '0')}.jpg`);
-    await page.screenshot({ 
-      path: framePath, 
-      type: 'jpeg', 
+    await page.screenshot({
+      path: framePath,
+      type: 'jpeg',
       quality: 95,
-      optimizeForSpeed: true 
+      optimizeForSpeed: true
     });
   }
-  
+
   process.stdout.write('\n');
   console.log('Capture complete. Closing browser...');
-  
+
   const audioLog = await page.evaluate(() => {
     return (window as any).getAudioLog ? (window as any).getAudioLog() : [];
   });
-  
+
   await browser.close();
   server.kill();
-  
+
   if (audioLog.length === 0) {
     console.warn('No audio log found. Rendering video without audio...');
   }
-  
+
   console.log('Assembling video with ffmpeg...');
   await assembleVideo(audioLog);
-  
+
   console.log('\n🎬 Render pipeline completed!');
 }
 
 async function assembleVideo(audioLog: Array<{ file: string; startTime: number }>) {
   const tempVideo = path.join(OUTPUT_DIR, `temp_video_${projectId}.mp4`);
-  
+
   console.log('Step 1: Encoding frames...');
   spawnSync('ffmpeg', [
     '-y',
     '-framerate', String(FPS),
+    '-start_number', '0',
     '-i', path.join(FRAMES_DIR, 'frame-%05d.jpg'),
     '-c:v', 'libx264',
     '-preset', 'fast',
     '-crf', '18',
     '-pix_fmt', 'yuv420p',
+    '-r', String(FPS),
     tempVideo
   ], { stdio: 'inherit' });
-  
+
   if (audioLog.length === 0) {
     console.warn('No audio found, saving video only.');
     fs.renameSync(tempVideo, FINAL_VIDEO);
@@ -308,17 +344,17 @@ async function assembleVideo(audioLog: Array<{ file: string; startTime: number }
     console.log(`\nSuccess! Rendered video saved to: ${FINAL_VIDEO}`);
     return;
   }
-  
+
   console.log('Step 2: Mixing audio...');
   const inputs = ['-i', tempVideo];
   const filterComplex: string[] = [];
   const audioMap: string[] = [];
   let validAudioCount = 0;
-  
+
   for (let i = 0; i < audioLog.length; i++) {
     const log = audioLog[i];
     const audioPath = path.join(process.cwd(), 'public', 'projects', log.file);
-    
+
     if (fs.existsSync(audioPath)) {
       inputs.push('-i', audioPath);
       validAudioCount++;
@@ -327,10 +363,10 @@ async function assembleVideo(audioLog: Array<{ file: string; startTime: number }
       audioMap.push(`[a${validAudioCount}]`);
     }
   }
-  
+
   if (validAudioCount > 0) {
     filterComplex.push(`${audioMap.join('')}amix=inputs=${validAudioCount}:duration=longest:dropout_transition=0:normalize=0[aout]`);
-    
+
     const ffmpegArgs = [
       '-y',
       ...inputs,
@@ -342,20 +378,20 @@ async function assembleVideo(audioLog: Array<{ file: string; startTime: number }
       '-b:a', '192k',
       FINAL_VIDEO
     ];
-    
+
     console.log('Running final ffmpeg mix...');
     spawnSync('ffmpeg', ffmpegArgs, { stdio: 'inherit' });
   } else {
     console.warn('No valid audio files found, copying video only.');
     fs.renameSync(tempVideo, FINAL_VIDEO);
   }
-  
+
   // Cleanup
   if (fs.existsSync(tempVideo)) fs.unlinkSync(tempVideo);
   fs.rmSync(FRAMES_DIR, { recursive: true, force: true });
-  
+
   console.log(`\n✅ Rendered video saved to: ${FINAL_VIDEO}`);
-  
+
   // Compress the video (unless --no-compress flag is set)
   if (!skipCompress) {
     console.log('\n🗜️  Starting video compression...');
@@ -366,7 +402,7 @@ async function assembleVideo(audioLog: Array<{ file: string; startTime: number }
         '--crf=23',
         '--preset=medium'
       ], { stdio: 'inherit' });
-      
+
       if (compressResult.status === 0) {
         const compressedFile = FINAL_VIDEO.replace('.mp4', '-compressed.mp4');
         console.log(`\n✅ Compressed video saved to: ${compressedFile}`);

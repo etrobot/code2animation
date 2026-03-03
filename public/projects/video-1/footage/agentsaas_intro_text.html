@@ -21,7 +21,6 @@
         const brandEl = document.getElementById('brand-text');
         const introEl = document.getElementById('introducing');
         const cursor = document.getElementById('cursor');
-        const searchSection = document.querySelector('.search-section');
 
         function typeWriter(text, i, cb) {
             if (i < text.length) {
@@ -32,33 +31,21 @@
             }
         }
         
-        function startAnimation() {
-            setTimeout(() => {
-                introEl.style.opacity = '1';
-                introEl.style.transform = 'translateY(0)';
-                introEl.style.letterSpacing = '0.4em';
-            }, 100);
+        setTimeout(() => {
+            introEl.style.opacity = '1';
+            introEl.style.transform = 'translateY(0)';
+            introEl.style.letterSpacing = '0.4em';
+        }, 100);
 
-            setTimeout(() => {
-                typeWriter(brandName, 0, () => {
-                    setTimeout(() => {
-                        if (cursor) {
-                            cursor.style.display = 'none';
-                        }
-                    }, 400);
-                });
-            }, 400);
-        }
-
-        if (window.location.search.includes('autoplay=false')) {
-            window.addEventListener('message', (event) => {
-                if (event.data && event.data.type === 'play') {
-                    startAnimation();
-                }
+        setTimeout(() => {
+            typeWriter(brandName, 0, () => {
+                setTimeout(() => {
+                    if (cursor) {
+                        cursor.style.display = 'none';
+                    }
+                }, 400);
             });
-        } else {
-            startAnimation();
-        }
+        }, 400);
     </script>
 </body>
 </html>

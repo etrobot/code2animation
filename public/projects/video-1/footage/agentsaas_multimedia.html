@@ -55,43 +55,119 @@
             </div>
         </div>
 
-
+        <div class="slack-notification" id="slack">
+            <div class="slack-icon"></div>
+            <div class="slack-content">
+                <div class="slack-header">
+                    <div class="slack-title">Slack • #investments</div>
+                    <div class="slack-time">Just now</div>
+                </div>
+                <div class="slack-text"><b>AgentSaaS:</b> Analysis complete. Report uploaded. 🚀</div>
+            </div>
+        </div>
     </div>
 
     <script>
+        const slack = document.getElementById('slack');
         const modelCode = document.getElementById('model-code');
         const subtitle = document.getElementById('subtitle');
 
         const subtitles = ["GROWTH MINDSET", "NEVER STOP", "LEARN DAILY", "SCALE FAST"];
         let subIdx = 0;
         let intervalId;
+        let hasAnimated = false;
+
         function startAnimation() {
-            intervalId = setInterval(() => {
-                subtitle.style.opacity = '0';
-                subtitle.classList.remove('pop');
-                setTimeout(() => {
-                    subIdx = (subIdx + 1) % subtitles.length;
+            if (hasAnimated) return;
+            hasAnimated = true;
+            
+            console.log('[Multimedia] Starting animation sequence');
+            
+            // Subtitle cycling animation using frame animation
+            window.registerFrameAnimation(subtitle, (frame, elapsed) => {
+                const cycleTime = 1.2; // 1200ms cycle
+                const currentCycle = Math.floor(elapsed / cycleTime);
+                const cycleProgress = (elapsed % cycleTime) / cycleTime;
+                
+                // Change subtitle every cycle
+                const targetIndex = currentCycle % subtitles.length;
+                if (targetIndex !== subIdx) {
+                    subIdx = targetIndex;
                     subtitle.innerText = subtitles[subIdx];
-                    subtitle.style.opacity = '1';
-                    subtitle.classList.add('pop');
-                }, 300);
-            }, 1200);
-
-            setTimeout(() => {
-                modelCode.style.opacity = '1';
-                modelCode.style.transform = 'translateX(0)';
-            }, 200);
-        }
-
-        if (window.location.search.includes('autoplay=false')) {
-            window.addEventListener('message', (event) => {
-                if (event.data && event.data.type === 'play') {
-                    if (!intervalId) startAnimation();
+                }
+                
+                // Fade out and in during transition
+                if (cycleProgress < 0.25) { // First 25% of cycle: fade out
+                    subtitle.style.opacity = 1 - (cycleProgress / 0.25);
+                    subtitle.classList.remove('pop');
+                } else if (cycleProgress < 0.5) { // Next 25%: stay hidden
+                    subtitle.style.opacity = '0';
+                } else { // Last 50%: fade in and pop
+                    const fadeProgress = (cycleProgress - 0.5) / 0.5;
+                    subtitle.style.opacity = fadeProgress;
+                    if (fadeProgress > 0.5) {
+                        subtitle.classList.add('pop');
+                    }
                 }
             });
-        } else {
-            startAnimation();
+            
+            // Model code slide-in animation
+            window.registerFrameAnimation(modelCode, (frame, elapsed) => {
+                if (elapsed >= 0.2) { // 200ms delay
+                    const progress = Math.min((elapsed - 0.2) / 0.8, 1); // 800ms duration
+                    
+                    // Apply easing
+                    const easedProgress = progress < 0.5 
+                        ? 2 * progress * progress 
+                        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                    
+                    modelCode.style.opacity = easedProgress;
+                    const translateX = 20 * (1 - easedProgress); // Slide from 20px to 0
+                    modelCode.style.transform = `translateX(${translateX}px)`;
+                }
+            }, 1);
+            
+            // Slack notification slide-in animation
+            window.registerFrameAnimation(slack, (frame, elapsed) => {
+                if (elapsed >= 0.8) { // 800ms delay (200ms + 600ms)
+                    const progress = Math.min((elapsed - 0.8) / 0.5, 1); // 500ms duration
+                    
+                    // Apply easing
+                    const easedProgress = progress < 0.5 
+                        ? 2 * progress * progress 
+                        : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+                    
+                    slack.style.opacity = easedProgress;
+                    const translateX = 50 * (1 - easedProgress); // Slide from 50px to 0
+                    slack.style.transform = `translateX(${translateX}px)`;
+                }
+            }, 1.3);
         }
+
+        // Wait for animation system to load
+        function initializeAnimations() {
+            if (!window.registerFrameAnimation) {
+                requestAnimationFrame(initializeAnimations);
+                return;
+            }
+            
+            console.log('[Multimedia] Animation system ready');
+            
+            if (window.location.search.includes('autoplay=false')) {
+                console.log('[Multimedia] Autoplay disabled, waiting for play message');
+                window.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'play') {
+                        console.log('[Multimedia] Received play message');
+                        startAnimation();
+                    }
+                });
+            } else {
+                console.log('[Multimedia] Autoplay enabled, starting animation');
+                startAnimation();
+            }
+        }
+        
+        initializeAnimations();
     </script>
 </body>
 

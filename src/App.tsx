@@ -11,30 +11,30 @@ import { generateAudio, loadAudioFiles, checkAudioExists, getSpeechClips } from 
 import { calculateTotalDuration, calculateAudioTimings, seekToTime } from './utils/playbackEngine';
 
 export default function App() {
-  const [isGenerating, setIsGenerating] = useState(false);
   const [audioCache, setAudioCache] = useState<Map<string, HTMLAudioElement>>(new Map());
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [currentWord, setCurrentWord] = useState<string>('');
-  const [wordTimestamp, setWordTimestamp] = useState<number>(0);
-  
+  const [audioInitialized, setAudioInitialized] = useState(false);
+  const [iframesLoaded, setIframesLoaded] = useState(0);
+
   // Check for render mode from URL params
   const urlParams = new URLSearchParams(window.location.search);
   const isRecordMode = urlParams.get('record') === 'true';
   const urlOrientation = urlParams.get('orientation');
   const urlProject = urlParams.get('project');
-  
+
   // Override defaults if in record mode
   const initialProject = urlProject || 'video-1';
   const initialPortrait = urlOrientation === 'portrait';
 
   // Use custom hooks
-  const { projects, activeProject, setActiveProject, isLoadingProject, currentProject } = useProject(initialProject);
-  
+  const { projects, availableProjects, activeProject, setActiveProject, isLoadingProject, currentProject } = useProject(initialProject);
+
   const [configError, setConfigError] = useState<string | null>(null);
-  
+
   const processedClips = useMemo(() => {
     if (!currentProject) return [];
-    
+
     try {
       setConfigError(null);
       return processClips(currentProject);
@@ -44,10 +44,10 @@ export default function App() {
       return [];
     }
   }, [currentProject]);
-  
+
   const [isPortrait, setIsPortrait] = useState(initialPortrait);
   const [disableTransitions, setDisableTransitions] = useState(false);
-  
+
   const {
     currentClipIndex,
     setCurrentClipIndex,
@@ -66,23 +66,29 @@ export default function App() {
       setActiveProject(urlProject);
     }
   }, [urlProject, activeProject, setActiveProject]);
-  
+
+  // In record mode, auto-initialize audio state so renderState computes properly
+  useEffect(() => {
+    if (isRecordMode && !audioInitialized) {
+      setAudioInitialized(true);
+    }
+  }, [isRecordMode, audioInitialized]);
+
   // TTS Integration - use preloaded audio from cache
   const currentClip = processedClips[currentClipIndex] as VideoClip;
   const shouldUseTTS = currentClip?.type !== 'transition' && currentClip?.speech;
-  
+
   // Calculate the audio file index by counting non-transition clips up to and including current
-  const audioClipIndex = shouldUseTTS 
+  const audioClipIndex = shouldUseTTS
     ? processedClips.slice(0, currentClipIndex + 1).filter(c => c.type !== 'transition').length - 1
     : undefined;
-  
+
   // Get preloaded audio from cache
-  const cachedAudio = audioClipIndex !== undefined 
+  const cachedAudio = audioClipIndex !== undefined
     ? audioCache.get(`${activeProject}-${audioClipIndex}`)
     : undefined;
 
   const {
-    isSpeaking,
     isLoading: isTTSLoading,
     speak,
     pause: pauseTTS,
@@ -97,17 +103,13 @@ export default function App() {
     onWordBoundary: (word) => {
       console.log('[TTS] Word boundary:', word);
       setCurrentWord(word);
-      // Get the current audio time for word-based media switching
-      if (cachedAudio) {
-        setWordTimestamp(cachedAudio.currentTime);
-      }
     },
     onEnd: () => {
       console.log('[TTS] Audio ended');
       // Don't auto-advance here, let the normal clip timing handle it
     }
   });
-  
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
@@ -122,7 +124,7 @@ export default function App() {
         const { clientWidth, clientHeight } = containerRef.current;
         const availableWidth = clientWidth - 64; // 32px padding on each side
         const availableHeight = clientHeight - 64;
-        
+
         const scaleX = availableWidth / CANVAS_WIDTH;
         const scaleY = availableHeight / CANVAS_HEIGHT;
         setScale(Math.min(scaleX, scaleY));
@@ -137,18 +139,25 @@ export default function App() {
   // Handle clip advancement
   useEffect(() => {
     if (currentTime >= clipDuration && isPlaying) {
+      // Check if we're in a cross-clip transition
+      const currentClipData = processedClips[currentClipIndex];
+      const medias = currentClipData?.calculatedMedia || [];
+      const lastMedia = medias[medias.length - 1];
+
+      // If the last media has transition2next and transitions are enabled,
+      // the transition should have completed by now, so we can advance
       if (currentClipIndex < processedClips.length - 1) {
         let nextIndex = currentClipIndex + 1;
         if (disableTransitions && processedClips[nextIndex].type === 'transition') {
-            nextIndex++;
+          nextIndex++;
         }
         if (nextIndex < processedClips.length) {
-            setCurrentClipIndex(nextIndex);
-            setCurrentTime(0);
-            setCurrentWord(''); // Reset word on clip change
+          setCurrentClipIndex(nextIndex);
+          setCurrentTime(0);
+          setCurrentWord(''); // Reset word on clip change
         } else {
-            setIsPlaying(false);
-            setCurrentTime(clipDuration);
+          setIsPlaying(false);
+          setCurrentTime(clipDuration);
         }
       } else {
         setIsPlaying(false);
@@ -157,25 +166,69 @@ export default function App() {
     }
   }, [currentTime, clipDuration, isPlaying, currentClipIndex, processedClips, disableTransitions, setCurrentClipIndex, setCurrentTime, setIsPlaying]);
 
-  // Auto-start TTS when clip changes and is playing
+  // Auto-start TTS when clip changes and is playing (only if audio is initialized)
   useEffect(() => {
-    if (isPlaying && shouldUseTTS && currentTime === 0) {
+    if (isPlaying && shouldUseTTS && currentTime === 0 && audioInitialized) {
       speak();
     }
-  }, [currentClipIndex, shouldUseTTS, isPlaying, speak, currentTime]);
+  }, [currentClipIndex, shouldUseTTS, isPlaying, speak, currentTime, audioInitialized]);
+
+  // Sync time with all iframes
+  useEffect(() => {
+    const syncWithIframes = () => {
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        if (iframe.contentWindow) {
+          try {
+            iframe.contentWindow.postMessage({
+              type: 'seek',
+              time: currentTime
+            }, '*');
+          } catch (e) {
+            // Ignore cross-origin errors
+          }
+        }
+      });
+    };
+
+    // Sync when time changes and we're playing, or when iframes are loaded
+    if (isPlaying || currentTime > 0 || iframesLoaded > 0) {
+      syncWithIframes();
+    }
+  }, [currentTime, isPlaying, iframesLoaded]);
+
+  const handleIframeLoad = () => {
+    setIframesLoaded(prev => prev + 1);
+    // Sync current time with newly loaded iframe
+    setTimeout(() => {
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach(iframe => {
+        if (iframe.contentWindow) {
+          try {
+            iframe.contentWindow.postMessage({
+              type: 'seek',
+              time: currentTime
+            }, '*');
+          } catch (e) {
+            // Ignore cross-origin errors
+          }
+        }
+      });
+    }, 100); // Small delay to ensure iframe script is loaded
+  };
 
   const togglePlay = async () => {
     console.log('[togglePlay] Function called, isPlaying:', isPlaying);
-    
-    // If trying to play, handle audio loading/generation
-    if (!isPlaying) {
+
+    // If trying to play and audio not initialized, handle audio loading/generation
+    if (!isPlaying && !audioInitialized) {
       console.log('[togglePlay] Starting audio loading process...');
       setIsLoadingAudio(true);
-      
+
       try {
         const speechClips = getSpeechClips(currentProject);
         console.log('[togglePlay] Found', speechClips.length, 'speech clips');
-        console.log('[togglePlay] Speech clips:', speechClips.map(c => c.speech?.substring(0, 30)));
+        console.log('[togglePlay] Speech clips:', speechClips.map((c: VideoClip) => c.speech?.substring(0, 30)));
 
         if (speechClips.length > 0) {
           // Check if audio files exist
@@ -185,14 +238,14 @@ export default function App() {
 
           if (!audioExists) {
             console.log(`[togglePlay] Audio missing, calling generateAudio API...`);
-            
+
             const result = await generateAudio(activeProject);
             console.log('[togglePlay] Generate audio result:', result);
-            
+
             if (!result.success) {
               throw new Error(result.error || 'Audio generation failed');
             }
-            
+
             console.log('[togglePlay] Audio generation successful:', result.message);
           } else {
             console.log('[togglePlay] Audio files already exist, skipping generation');
@@ -206,7 +259,8 @@ export default function App() {
         } else {
           console.log('[togglePlay] No speech clips found, skipping audio processing');
         }
-        
+
+        setAudioInitialized(true);
         setIsLoadingAudio(false);
       } catch (error: any) {
         console.error('[togglePlay] Audio loading failed:', error);
@@ -220,13 +274,13 @@ export default function App() {
       setCurrentClipIndex(0);
       setCurrentTime(0);
     }
-    
+
     const newIsPlaying = !isPlaying;
     console.log('[togglePlay] Setting isPlaying to:', newIsPlaying);
     setIsPlaying(newIsPlaying);
-    
+
     // Sync TTS audio
-    if (shouldUseTTS) {
+    if (shouldUseTTS && audioInitialized) {
       if (newIsPlaying) {
         if (currentTime === 0) {
           speak(); // Start from beginning
@@ -254,6 +308,9 @@ export default function App() {
   const handleReset = () => {
     stopTTS(); // Stop current TTS
     setCurrentWord(''); // Reset word
+    setAudioInitialized(false); // Reset to uninitialized state
+    setAudioCache(new Map()); // Clear audio cache
+    setIframesLoaded(0); // Reset iframe counter
     reset();
   };
 
@@ -261,10 +318,18 @@ export default function App() {
     setIsPortrait(!isPortrait);
   };
 
-  const renderState = useMemo(() => 
-    getCurrentRenderState(currentClipIndex, currentTime, processedClips, disableTransitions, currentWord), 
-    [currentClipIndex, currentTime, processedClips, disableTransitions, currentWord]
-  );
+  // Only calculate render state after audio is initialized (i.e., after first play)
+  // In record mode, always compute render state (audioInitialized is auto-set)
+  const renderState = useMemo(() => {
+    if (!audioInitialized && !isRecordMode) {
+      // Return empty state before initialization
+      return {
+        activeMedias: [],
+        currentClip: processedClips[0]
+      };
+    }
+    return getCurrentRenderState(currentClipIndex, currentTime, processedClips, disableTransitions, currentWord);
+  }, [currentClipIndex, currentTime, processedClips, disableTransitions, currentWord, audioInitialized, isRecordMode]);
 
   // Expose functions for rendering mode
   useEffect(() => {
@@ -291,10 +356,16 @@ export default function App() {
         }));
       };
 
+      // Get current clip index
+      const getCurrentClipIndex = () => {
+        return currentClipIndex;
+      };
+
       // Expose to window for puppeteer
       (window as any).seekTo = seekTo;
       (window as any).getTotalDuration = getTotalDuration;
       (window as any).getAudioLog = getAudioLog;
+      (window as any).getCurrentClipIndex = getCurrentClipIndex;
       (window as any).suppressTTS = true;
 
       console.log('[Render Mode] Functions exposed to window');
@@ -335,7 +406,7 @@ export default function App() {
     <div className={`h-screen w-screen bg-neutral-950 text-white flex flex-col font-sans overflow-hidden ${isRecordMode && !isLoadingAudio ? 'ready-to-record' : ''}`}>
       {/* Main Canvas Area */}
       <main ref={containerRef} className="flex-1 relative flex items-center justify-center bg-[#0a0a0a] overflow-hidden">
-        <div 
+        <div
           className="relative bg-black shadow-2xl ring-1 ring-neutral-800 overflow-hidden shrink-0"
           style={{
             width: CANVAS_WIDTH,
@@ -344,39 +415,43 @@ export default function App() {
             transformOrigin: 'center center'
           }}
         >
-          <Player renderState={renderState} background={currentProject.background} resetCounter={resetCounter} isPlaying={isPlaying} />
+          <Player renderState={renderState} background={currentProject.background} resetCounter={resetCounter} isPlaying={isPlaying} onIframeLoad={handleIframeLoad} />
         </div>
       </main>
 
       {/* Bottom Controls Bar */}
       {!isRecordMode && (
         <PlaybackControls
-            projects={projects}
-            activeProject={activeProject}
-            isGenerating={isGenerating || isTTSLoading}
-            isLoadingAudio={isLoadingAudio}
-            isPlaying={isPlaying}
-            currentClipIndex={currentClipIndex}
-            currentTime={currentTime}
-            clipDuration={clipDuration}
-            totalClips={currentProject.clips.length}
-            isPortrait={isPortrait}
-            disableTransitions={disableTransitions}
-            onProjectChange={(projectId: string) => {
-              stopTTS(); // Stop current TTS when switching projects
-              setCurrentWord(''); // Reset word
-              setActiveProject(projectId);
-              setCurrentClipIndex(0);
-              setCurrentTime(0);
-              setIsPlaying(false);
-            }}
-            onTogglePlay={togglePlay}
-            onNextClip={handleNextClip}
-            onPrevClip={handlePrevClip}
-            onReset={handleReset}
-            onToggleOrientation={toggleOrientation}
-            onToggleTransitions={() => setDisableTransitions(!disableTransitions)}
-          />
+          projects={projects}
+          availableProjects={availableProjects}
+          activeProject={activeProject}
+          isGenerating={isTTSLoading}
+          isLoadingAudio={isLoadingAudio}
+          isPlaying={isPlaying}
+          currentClipIndex={currentClipIndex}
+          currentTime={currentTime}
+          clipDuration={clipDuration}
+          totalClips={currentProject.clips.length}
+          isPortrait={isPortrait}
+          disableTransitions={disableTransitions}
+          onProjectChange={(projectId: string) => {
+            stopTTS(); // Stop current TTS when switching projects
+            setCurrentWord(''); // Reset word
+            setActiveProject(projectId);
+            setCurrentClipIndex(0);
+            setCurrentTime(0);
+            setIsPlaying(false);
+            setAudioInitialized(false); // Reset audio initialization
+            setAudioCache(new Map()); // Clear audio cache
+            setIframesLoaded(0); // Reset iframe counter
+          }}
+          onTogglePlay={togglePlay}
+          onNextClip={handleNextClip}
+          onPrevClip={handlePrevClip}
+          onReset={handleReset}
+          onToggleOrientation={toggleOrientation}
+          onToggleTransitions={() => setDisableTransitions(!disableTransitions)}
+        />
       )}
     </div>
   );

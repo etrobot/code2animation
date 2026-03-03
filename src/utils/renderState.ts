@@ -10,6 +10,43 @@ export function getCurrentRenderState(
 
   const medias = clip.calculatedMedia || [];
 
+  // Check if we're at the start of a clip and the previous clip had a transition
+  if (clipIndex > 0 && !disableTransitions) {
+    const prevClip = clips[clipIndex - 1];
+    const prevMedias = prevClip?.calculatedMedia || [];
+    const prevLastMedia = prevMedias[prevMedias.length - 1];
+    
+    if (prevLastMedia && prevLastMedia.transition2next) {
+      const transitionDuration = prevLastMedia.duration || 0.5;
+      const halfTransition = transitionDuration / 2;
+      
+      // Are we in the second half of the cross-clip transition?
+      if (localTime < halfTransition) {
+        const firstMedia = medias[0];
+        if (firstMedia) {
+          // Progress continues from 0.5 to 1.0 in the new clip
+          const progress = 0.5 + (localTime / halfTransition) * 0.5;
+          const styles = getTransitionStyles(prevLastMedia.transition2next, progress, prevLastMedia.stay);
+          
+          const activeMedias = [];
+          
+          // Show previous clip's stayed medias transitioning out
+          for (let i = 0; i < prevMedias.length - 1; i++) {
+            const prevMedia = prevMedias[i];
+            if (prevMedia.stay) {
+              activeMedias.push({ media: prevMedia, style: styles.from });
+            }
+          }
+          
+          activeMedias.push({ media: prevLastMedia, style: styles.from });
+          activeMedias.push({ media: firstMedia, style: styles.to });
+          
+          return { activeMedias, incomingTransition: true };
+        }
+      }
+    }
+  }
+
   // Find the most recent media that should be active based on word boundaries
   let activeMedia = null;
 
@@ -147,6 +184,7 @@ export function getCurrentRenderState(
   // Cross-clip transition: when the last media in this clip has transition2next,
   // animate toward the first media of the next clip near the end of this clip.
   const clipDuration = clip.duration || 0;
+  const baseDuration = clip.baseDuration || clipDuration;
   const isLastMedia = activeMediaIndex === medias.length - 1;
 
   if (isLastMedia && activeMedia.transition2next && !disableTransitions && clipIndex + 1 < clips.length) {
@@ -156,11 +194,14 @@ export function getCurrentRenderState(
 
     if (nextClipFirstMedia) {
       const transitionDuration = activeMedia.duration || 0.5;
-      const transitionStart = clipDuration - transitionDuration;
+      // Transition starts at the base duration (when speech ends)
+      const transitionStart = baseDuration;
 
       // Are we in the cross-clip transition period?
-      if (localTime >= transitionStart && localTime < clipDuration) {
-        const progress = Math.min(Math.max((localTime - transitionStart) / transitionDuration, 0), 1);
+      if (localTime >= transitionStart && localTime <= clipDuration) {
+        // Progress goes from 0 to 0.5 in the first half (current clip)
+        const halfTransition = transitionDuration / 2;
+        const progress = Math.min((localTime - transitionStart) / halfTransition, 1) * 0.5;
         const styles = getTransitionStyles(activeMedia.transition2next, progress, activeMedia.stay);
 
         const activeMedias = [];

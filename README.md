@@ -1,130 +1,90 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
-
 # AgentSaaS Video Editor
 
-A powerful video editor with TTS (Text-to-Speech) and automated rendering capabilities.
-
-View your app in AI Studio: https://ai.studio/apps/2c282826-7ff3-43c4-8c36-273d06d1c4ff
+Code-driven video creation with TTS narration and automated rendering.
 
 ## Features
 
-- Interactive video preview with playback controls
+- Interactive video preview with real-time playback controls
 - TTS audio generation using Microsoft Edge TTS
-- Automated video rendering with Puppeteer and FFmpeg
-- Support for transitions, media clips, and timing
-- Portrait and landscape orientations
-- Frame-by-frame rendering at 30 FPS
+- Automated frame-by-frame rendering (30 FPS, 1920x1080/1080x1920)
+- HTML/CSS animation support with deterministic timing
+- Portrait and landscape video formats
 
 ## Quick Start
 
 **Prerequisites:** Node.js 18+, FFmpeg
 
-1. Install dependencies:
-   ```bash
-   pnpm install
-   ```
+```bash
+# Install dependencies
+pnpm install
 
-2. Generate TTS audio:
-   ```bash
-   pnpm generate-audio video-1
-   ```
+# Generate TTS audio
+pnpm generate-audio video-1
 
-3. Run the preview:
-   ```bash
-   pnpm dev
-   ```
+# Preview in browser
+pnpm dev
 
-4. Render the final video:
-   ```bash
-   pnpm render video-1
-   ```
+# Render final video
+pnpm render video-1 [--portrait]
+```
 
 ## Commands
 
-### Development
 ```bash
-pnpm dev              # Start dev server
-pnpm build            # Build for production
-pnpm preview          # Preview production build
-```
-
-### Audio Generation
-```bash
-pnpm generate-audio <projectId>
-```
-Generates TTS audio files for all speech clips in a project.
-
-### Video Rendering
-```bash
-pnpm render <projectId> [--portrait]
-```
-Renders the complete video with audio to MP4.
-
-Examples:
-```bash
-pnpm render video-1              # Landscape (1920x1080)
-pnpm render video-1 --portrait   # Portrait (1080x1920)
+pnpm dev                          # Start development server
+pnpm generate-audio <projectId>   # Generate TTS audio files
+pnpm render <projectId>           # Render landscape video (1920x1080)
+pnpm render <projectId> --portrait # Render portrait video (1080x1920)
 ```
 
 ## Project Structure
 
 ```
-├── public/
-│   ├── projects/          # Video project definitions
-│   │   └── video-1/
-│   │       ├── video-1.json
-│   │       └── footage/   # HTML media components
-│   ├── audio/             # Generated TTS audio files
-│   └── video/             # Rendered output videos
-├── scripts/
-│   ├── generate-audio.ts  # TTS generation script
-│   └── render.js          # Video rendering script
-└── src/
-    ├── App.tsx            # Main application
-    ├── components/        # React components
-    └── hooks/             # Custom hooks (useTTS)
+public/projects/<projectId>/
+├── <projectId>.json      # Project configuration
+├── footage/              # HTML/CSS media components
+└── audio/                # Generated TTS files (MP3 + timing JSON)
+
+public/video/             # Rendered output videos
 ```
 
-## Installing FFmpeg
+## Animation Guidelines
 
-### macOS
+**Supported patterns:**
+- setTimeout-based style changes
+- CSS transitions (auto-converted to frame-based)
+- Typewriter effects with character timing
+- Fade in/out and slide animations
+
+**Best practices:**
+```html
+<!-- Auto-detected fade in -->
+<div style="opacity: 0;">Content</div>
+<script>
+setTimeout(() => element.style.opacity = '1', 100);
+</script>
+```
+
+## System Requirements
+
+- **FFmpeg**: Video encoding and audio mixing
+- **Chromium/Chrome**: Headless rendering via Puppeteer
+- **Internet**: Microsoft Edge TTS service
+
+## Installation
+
+### FFmpeg
 ```bash
+# macOS
 brew install ffmpeg
-```
 
-### Linux
-```bash
+# Linux
 sudo apt-get install ffmpeg
 ```
 
-### Windows
-Download from https://ffmpeg.org/download.html
-
-## Troubleshooting
-
-### Puppeteer browser issues
-Set the browser path:
-```bash
-export PUPPETEER_EXECUTABLE_PATH=/path/to/chrome
-```
-
-Or install Chromium:
+### Chromium (if needed)
 ```bash
 npx puppeteer browsers install chrome
+# or set custom path
+export PUPPETEER_EXECUTABLE_PATH=/path/to/chrome
 ```
-
-### Audio not playing
-Make sure to generate audio first:
-```bash
-pnpm generate-audio video-1
-```
-
-Then refresh the browser.
-
-## Learn More
-
-- [Scripts Documentation](./scripts/README.md)
-- [Components Documentation](./src/components/README.md)
-- [Hooks Documentation](./src/hooks/README.md)

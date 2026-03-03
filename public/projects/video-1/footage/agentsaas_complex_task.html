@@ -58,6 +58,7 @@
         const headerEl = document.getElementById('header');
         const taskItems = document.querySelectorAll('.task-item');
         const resultEl = document.getElementById('result');
+        let hasAnimated = false;
 
         function streamText(text, i, cb) {
             if (i < text.length) {
@@ -69,47 +70,128 @@
         }
 
         function startAnimation() {
-            setTimeout(() => {
-                streamText(promptText, 0, () => {
-                    setTimeout(() => {
-                        headerEl.style.opacity = '1';
-                        headerEl.style.transform = 'translateX(0)';
-
-                        taskItems.forEach((item, idx) => {
-                            setTimeout(() => {
-                                item.classList.add('visible');
-                                item.classList.add('active');
-                            }, (idx + 1) * 700);
-                        });
-
-                        setTimeout(() => {
-                            document.querySelector('.spinner').style.display = 'none';
-                            headerEl.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Plan Completed</span>';
-                            headerEl.style.background = 'rgba(16, 185, 129, 0.2)';
-
-                            setTimeout(() => {
-                                document.getElementById('tasks').style.display = 'none';
-                                resultEl.style.display = 'block';
-                                setTimeout(() => {
-                                    resultEl.style.opacity = '1';
-                                    resultEl.style.transform = 'translateY(0)';
-                                }, 50);
-                            }, 500);
-                        }, 3500);
-                    }, 400);
+            if (hasAnimated) return;
+            hasAnimated = true;
+            
+            console.log('[ComplexTask] Starting animation sequence');
+            
+            // Main animation sequence using frame-based animations
+            window.registerFrameAnimation(document.body, (frame, elapsed) => {
+                // Typewriter effect for prompt (starts at 300ms)
+                if (elapsed >= 0.3 && !window.typewriterStarted) {
+                    window.typewriterStarted = true;
+                    console.log('[ComplexTask] Starting typewriter effect');
+                    
+                    // Use frame-based typewriter animation
+                    window.registerFrameAnimation(promptEl, (frame, typeElapsed) => {
+                        const charDelay = 0.03; // 30ms per character
+                        const currentChar = Math.floor(typeElapsed / charDelay);
+                        if (currentChar < promptText.length) {
+                            promptEl.innerHTML = promptText.substring(0, currentChar + 1);
+                        }
+                    }, promptText.length * 0.03 + 0.5);
+                }
+                
+                // Header slide-in animation (starts after typewriter + 400ms)
+                const typewriterDuration = promptText.length * 0.03;
+                const headerStartTime = 0.3 + typewriterDuration + 0.4;
+                if (elapsed >= headerStartTime) {
+                    const headerProgress = Math.min((elapsed - headerStartTime) / 0.5, 1); // 500ms duration
+                    
+                    // Apply easing
+                    const easedProgress = headerProgress < 0.5 
+                        ? 2 * headerProgress * headerProgress 
+                        : 1 - Math.pow(-2 * headerProgress + 2, 2) / 2;
+                    
+                    headerEl.style.opacity = easedProgress;
+                    const translateX = -20 * (1 - easedProgress); // Slide from -20px to 0
+                    headerEl.style.transform = `translateX(${translateX}px)`;
+                }
+                
+                // Task items animation (staggered, starts after header)
+                const taskStartTime = headerStartTime + 0.5;
+                taskItems.forEach((item, idx) => {
+                    const itemStartTime = taskStartTime + (idx * 0.7); // 700ms stagger
+                    if (elapsed >= itemStartTime) {
+                        const itemProgress = Math.min((elapsed - itemStartTime) / 0.3, 1); // 300ms duration
+                        
+                        item.style.opacity = itemProgress;
+                        const translateY = 10 * (1 - itemProgress); // Slide from 10px to 0
+                        item.style.transform = `translateY(${translateY}px)`;
+                        
+                        if (itemProgress >= 1) {
+                            item.classList.add('visible', 'active');
+                        }
+                    }
                 });
-            }, 300);
-        }
-
-        if (window.location.search.includes('autoplay=false')) {
-            window.addEventListener('message', (event) => {
-                if (event.data && event.data.type === 'play') {
-                    startAnimation();
+                
+                // Completion animation (after all tasks + 3.5s)
+                const completionTime = taskStartTime + (taskItems.length * 0.7) + 3.5;
+                if (elapsed >= completionTime && !window.completionStarted) {
+                    window.completionStarted = true;
+                    console.log('[ComplexTask] Starting completion sequence');
+                    
+                    // Hide spinner and update header
+                    const spinner = document.querySelector('.spinner');
+                    if (spinner) spinner.style.display = 'none';
+                    
+                    headerEl.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg><span>Plan Completed</span>';
+                    headerEl.style.background = 'rgba(16, 185, 129, 0.2)';
+                }
+                
+                // Result animation (500ms after completion)
+                const resultStartTime = completionTime + 0.5;
+                if (elapsed >= resultStartTime && !window.resultStarted) {
+                    window.resultStarted = true;
+                    console.log('[ComplexTask] Starting result animation');
+                    
+                    // Hide tasks and show result
+                    document.getElementById('tasks').style.display = 'none';
+                    resultEl.style.display = 'block';
+                    
+                    // Animate result appearance
+                    window.registerFrameAnimation(resultEl, (frame, resultElapsed) => {
+                        if (resultElapsed >= 0.05) { // 50ms delay
+                            const resultProgress = Math.min((resultElapsed - 0.05) / 0.8, 1); // 800ms duration
+                            
+                            // Apply easing
+                            const easedProgress = resultProgress < 0.5 
+                                ? 2 * resultProgress * resultProgress 
+                                : 1 - Math.pow(-2 * resultProgress + 2, 2) / 2;
+                            
+                            resultEl.style.opacity = easedProgress;
+                            const translateY = 20 * (1 - easedProgress); // Slide from 20px to 0
+                            resultEl.style.transform = `translateY(${translateY}px)`;
+                        }
+                    }, 0.85);
                 }
             });
-        } else {
-            startAnimation();
         }
+
+        // Wait for animation system to load
+        function initializeAnimations() {
+            if (!window.registerFrameAnimation) {
+                requestAnimationFrame(initializeAnimations);
+                return;
+            }
+            
+            console.log('[ComplexTask] Animation system ready');
+            
+            if (window.location.search.includes('autoplay=false')) {
+                console.log('[ComplexTask] Autoplay disabled, waiting for play message');
+                window.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'play') {
+                        console.log('[ComplexTask] Received play message');
+                        startAnimation();
+                    }
+                });
+            } else {
+                console.log('[ComplexTask] Autoplay enabled, starting animation');
+                startAnimation();
+            }
+        }
+        
+        initializeAnimations();
     </script>
 </body>
 

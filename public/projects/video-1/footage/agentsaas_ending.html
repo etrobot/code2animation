@@ -20,12 +20,16 @@
     </div>
 
     <script>
+        console.log('[Ending] Script loaded');
+        
         const ptcContainer = document.getElementById('particles');
         const finalText = document.getElementById('final');
         const logo = document.getElementById('logo');
         const icons = ['✨', '🚀', '🧠', '⚡', '🌐', '📊'];
 
         function createExplosion() {
+            console.log('[Ending] Creating explosion');
+            
             // Particles
             for (let i = 0; i < 60; i++) {
                 const el = document.createElement('div');
@@ -33,18 +37,36 @@
 
                 const angle = Math.random() * Math.PI * 2;
                 const distOuter = 800 + Math.random() * 400;
+                const randomZ = Math.random() * 500;
 
                 ptcContainer.appendChild(el);
 
-                setTimeout(() => {
-                    el.style.opacity = '1';
-                    el.style.transform = `translate3d(${Math.cos(angle) * distOuter}px, ${Math.sin(angle) * distOuter}px, ${Math.random() * 500}px)`;
-
-                    setTimeout(() => {
-                        el.style.transform = 'translate3d(0,0,0)';
-                        el.style.opacity = '0';
-                    }, 1000 + Math.random() * 1000);
-                }, 50);
+                // Use frame-based animation for particles
+                window.registerFrameAnimation(el, (frame, elapsed) => {
+                    if (elapsed >= 0.05) { // 50ms delay
+                        const animTime = elapsed - 0.05;
+                        
+                        if (animTime <= 1) {
+                            // Expand phase (0-1s)
+                            el.style.opacity = '1';
+                            const progress = animTime;
+                            const x = Math.cos(angle) * distOuter * progress;
+                            const y = Math.sin(angle) * distOuter * progress;
+                            const z = randomZ * progress;
+                            el.style.transform = `translate3d(${x}px, ${y}px, ${z}px)`;
+                        } else if (animTime <= 2) {
+                            // Contract phase (1-2s)
+                            const contractProgress = animTime - 1;
+                            el.style.opacity = 1 - contractProgress;
+                            el.style.transform = 'translate3d(0,0,0)';
+                        } else {
+                            // Remove element after 2s
+                            if (el.parentNode) {
+                                el.parentNode.removeChild(el);
+                            }
+                        }
+                    }
+                }, 2.1);
             }
 
             // Icons
@@ -55,45 +77,88 @@
 
                 const angle = Math.random() * Math.PI * 2;
                 const dist = 600 + Math.random() * 300;
+                const rotation = Math.random() * 60 - 30;
 
                 el.style.transform = `translate3d(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist}px, -200px) scale(0)`;
                 ptcContainer.appendChild(el);
 
-                setTimeout(() => {
-                    el.style.opacity = '1';
-                    el.style.transform = `translate3d(${Math.cos(angle) * (dist / 3)}px, ${Math.sin(angle) * (dist / 3)}px, 0) scale(1) rotate(${Math.random() * 60 - 30}deg)`;
-
-                    setTimeout(() => {
-                        el.style.opacity = '0';
-                        el.style.transform = 'translate3d(0,0,0) scale(0)';
-                    }, 1500 + Math.random() * 500);
-                }, 200 + i * 50);
+                // Use frame-based animation for icons
+                window.registerFrameAnimation(el, (frame, elapsed) => {
+                    const startTime = 0.2 + i * 0.05; // Staggered start
+                    if (elapsed >= startTime) {
+                        const animTime = elapsed - startTime;
+                        
+                        if (animTime <= 1.5) {
+                            // Appear and move (0-1.5s)
+                            el.style.opacity = '1';
+                            const progress = Math.min(animTime / 1.5, 1);
+                            const x = Math.cos(angle) * (dist / 3) * progress;
+                            const y = Math.sin(angle) * (dist / 3) * progress;
+                            const currentRotation = rotation * progress;
+                            el.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${progress}) rotate(${currentRotation}deg)`;
+                        } else if (animTime <= 2) {
+                            // Fade out (1.5-2s)
+                            const fadeProgress = (animTime - 1.5) / 0.5;
+                            el.style.opacity = 1 - fadeProgress;
+                            el.style.transform = 'translate3d(0,0,0) scale(0)';
+                        } else {
+                            // Remove element after 2s
+                            if (el.parentNode) {
+                                el.parentNode.removeChild(el);
+                            }
+                        }
+                    }
+                }, 2.1);
             }
         }
 
         function startAnimation() {
-            setTimeout(() => {
-                createExplosion();
-
-                setTimeout(() => {
-                    logo.style.opacity = '1';
-                    logo.style.transform = 'scale(1)';
-
-                    finalText.style.opacity = '1';
-                    finalText.style.transform = 'scale(1) translateY(0)';
-                }, 1800);
-            }, 300);
-        }
-
-        if (window.location.search.includes('autoplay=false')) {
-            window.addEventListener('message', (event) => {
-                if (event.data && event.data.type === 'play') {
-                    startAnimation();
+            // Main sequence animation
+            window.registerFrameAnimation(document.body, (frame, elapsed) => {
+                if (elapsed >= 0.3) { // 300ms delay
+                    if (!window.explosionStarted) {
+                        window.explosionStarted = true;
+                        createExplosion();
+                    }
+                }
+                
+                if (elapsed >= 2.1) { // 1800ms + 300ms = 2.1s total
+                    // Logo animation
+                    const logoProgress = Math.min((elapsed - 2.1) / 0.5, 1); // 500ms duration
+                    logo.style.opacity = logoProgress;
+                    const logoScale = 0.5 + (0.5 * logoProgress); // Scale from 0.5 to 1
+                    logo.style.transform = `scale(${logoScale})`;
+                    
+                    // Final text animation (starts at same time)
+                    finalText.style.opacity = logoProgress;
+                    const textScale = 0.9 + (0.1 * logoProgress); // Scale from 0.9 to 1
+                    const textY = 20 * (1 - logoProgress); // Move from 20px to 0
+                    finalText.style.transform = `scale(${textScale}) translateY(${textY}px)`;
                 }
             });
-        } else {
-            startAnimation();
         }
+
+        // Wait for animation system to load
+        function initializeAnimations() {
+            if (!window.registerFrameAnimation) {
+                requestAnimationFrame(initializeAnimations);
+                return;
+            }
+            
+            console.log('[Ending] Animation system ready, starting animations');
+            
+            if (window.location.search.includes('autoplay=false')) {
+                window.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'play') {
+                        startAnimation();
+                    }
+                });
+            } else {
+                startAnimation();
+            }
+        }
+        
+        initializeAnimations();
     </script>
 </body>
 

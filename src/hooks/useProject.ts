@@ -1,9 +1,35 @@
 import { useState, useEffect } from 'react';
 
+interface ProjectInfo {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 export function useProject(initialProject: string) {
   const [projects, setProjects] = useState<any>({});
+  const [availableProjects, setAvailableProjects] = useState<ProjectInfo[]>([]);
   const [activeProject, setActiveProject] = useState<string>(initialProject);
   const [isLoadingProject, setIsLoadingProject] = useState(true);
+
+  // Load available projects list on mount
+  useEffect(() => {
+    const loadAvailableProjects = async () => {
+      try {
+        const response = await fetch('/api/projects');
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableProjects(data.projects || []);
+        } else {
+          console.error('Failed to load available projects');
+        }
+      } catch (error) {
+        console.error('Error loading available projects:', error);
+      }
+    };
+    
+    loadAvailableProjects();
+  }, []);
 
   // Load project JSON dynamically
   useEffect(() => {
@@ -42,6 +68,7 @@ export function useProject(initialProject: string) {
 
   return {
     projects,
+    availableProjects,
     activeProject,
     setActiveProject,
     isLoadingProject,

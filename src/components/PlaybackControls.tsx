@@ -1,9 +1,16 @@
 import React from 'react';
 import { Play, Pause, Monitor, Smartphone, SkipForward, SkipBack, RotateCcw, Wand2 } from 'lucide-react';
 
+interface ProjectInfo {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 interface PlaybackControlsProps {
   // Project and state
   projects: Record<string, any>;
+  availableProjects: ProjectInfo[];
   activeProject: string;
   isGenerating: boolean;
   isLoadingAudio: boolean;
@@ -31,6 +38,7 @@ interface PlaybackControlsProps {
 
 export default function PlaybackControls({
   projects,
+  availableProjects,
   activeProject,
   isGenerating,
   isLoadingAudio,
@@ -49,6 +57,11 @@ export default function PlaybackControls({
   onToggleOrientation,
   onToggleTransitions
 }: PlaybackControlsProps) {
+  // Use availableProjects if available, otherwise fallback to loaded projects
+  const projectList = availableProjects.length > 0 
+    ? availableProjects 
+    : Object.keys(projects).map(id => ({ id, name: id }));
+
   return (
     <div className="h-16 bg-zinc-900 border-t border-zinc-800 flex items-center px-6 justify-between w-full shrink-0">
       {/* Left Controls */}
@@ -60,8 +73,10 @@ export default function PlaybackControls({
           }}
           className="bg-zinc-800 text-sm font-bold text-white border border-white/10 rounded px-2 py-1 cursor-pointer hover:border-[#00FF00] transition-colors outline-none"
         >
-          {Object.keys(projects).map(id => (
-            <option key={id} value={id}>{id}</option>
+          {projectList.map(project => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
           ))}
         </select>
 

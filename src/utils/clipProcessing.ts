@@ -6,7 +6,14 @@ export function processClips(project: any) {
 
   return project.clips.map((clip: any, index: number) => {
     const words = (clip.speech || '').split(/\s+/);
-    const duration = clip.duration || Math.max(2, words.length * WORD_DURATION);
+    const wordBasedDuration = Math.max(2, words.length * WORD_DURATION);
+    
+    // Choose the longer duration between clip.duration and word-based duration
+    const baseDuration = clip.duration 
+      ? Math.max(clip.duration, wordBasedDuration)
+      : wordBasedDuration;
+    
+    let duration = baseDuration;
 
     const calculatedMedia: any[] = [];
 
@@ -40,9 +47,18 @@ export function processClips(project: any) {
       });
     }
 
+    // If the last media has transition2next, extend clip duration by half the transition time
+    // This allows the transition to overlap between clips
+    const lastMedia = calculatedMedia[calculatedMedia.length - 1];
+    if (lastMedia && lastMedia.transition2next && index < project.clips.length - 1) {
+      const transitionDuration = lastMedia.duration || 0.5;
+      duration = baseDuration + (transitionDuration / 2);
+    }
+
     return {
       ...clip,
       duration,
+      baseDuration, // Store original duration for transition calculation
       calculatedMedia,
       originalIndex: index
     };
