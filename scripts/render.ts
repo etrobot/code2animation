@@ -8,13 +8,15 @@ const args = process.argv.slice(2);
 const isPortrait = args.includes('--portrait') || args.includes('portrait');
 const skipCompress = args.includes('--no-compress') || args.includes('--skip-compress');
 const projectId = args.find(arg => !arg.startsWith('--') && arg !== 'portrait');
+const runIdArg = args.find(arg => arg.startsWith('--run-id='))?.split('=')[1];
 
 if (!projectId) {
-  console.error('Usage: npm run render <projectId> [--portrait] [--no-compress]');
+  console.error('Usage: npm run render <projectId> [--portrait] [--no-compress] [--run-id=<id>]');
   console.error('Example: npm run render agentSaasPromoVideo');
   console.error('Options:');
   console.error('  --portrait        Render in portrait mode (1080x1920)');
   console.error('  --no-compress     Skip video compression after rendering');
+  console.error('  --run-id=<id>     Optional run id for unique output names');
   process.exit(1);
 }
 
@@ -22,10 +24,27 @@ const WIDTH = isPortrait ? 1080 : 1920;
 const HEIGHT = isPortrait ? 1920 : 1080;
 const FPS = 30;
 const BASE_PORT = 5175;
+const orientation = isPortrait ? 'portrait' : 'landscape';
+
+function createRunId() {
+  const now = new Date();
+  const ts = [
+    now.getFullYear().toString(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+    String(now.getHours()).padStart(2, '0'),
+    String(now.getMinutes()).padStart(2, '0'),
+    String(now.getSeconds()).padStart(2, '0')
+  ].join('');
+  return ts;
+}
+
+const runId = (runIdArg || process.env.RENDER_RUN_ID || createRunId()).replace(/[^a-zA-Z0-9._-]/g, '_');
+const renderSuffix = `${orientation}-${runId}`;
 
 const OUTPUT_DIR = path.resolve(process.cwd(), 'public', 'video');
-const FRAMES_DIR = path.join(OUTPUT_DIR, `frames-${projectId}-${isPortrait ? 'portrait' : 'landscape'}`);
-const FINAL_VIDEO = path.join(OUTPUT_DIR, `render-${projectId}-${isPortrait ? 'portrait' : 'landscape'}.mp4`);
+const FRAMES_DIR = path.join(OUTPUT_DIR, `frames-${projectId}-${renderSuffix}`);
+const FINAL_VIDEO = path.join(OUTPUT_DIR, `render-${projectId}-${renderSuffix}.mp4`);
 
 if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -160,9 +179,12 @@ async function main() {
   }
 
   const PORT = await findFreePort(BASE_PORT);
-  const BASE_URL = `http://localhost:${PORT}/?record=true&orientation=${isPortrait ? 'portrait' : 'landscape'}&project=${projectId}`;
+  const BASE_URL = `http://localhost:${PORT}/?record=true&orientation=${orientation}&project=${projectId}`;
 
   console.log(`Starting Vite server on port ${PORT}...`);
+  console.log(`Render run id: ${runId}`);
+  console.log(`Frames dir: ${FRAMES_DIR}`);
+  console.log(`Final video: ${FINAL_VIDEO}`);
   const server = spawn('npm', ['run', 'dev', '--', '--port', String(PORT)], {
     stdio: ['ignore', 'pipe', 'pipe'],
     shell: true
@@ -323,7 +345,7 @@ async function main() {
 }
 
 async function assembleVideo(audioLog: Array<{ file: string; startTime: number }>) {
-  const tempVideo = path.join(OUTPUT_DIR, `temp_video_${projectId}.mp4`);
+  const tempVideo = path.join(OUTPUT_DIR, `temp_video_${projectId}_${renderSuffix}.mp4`);
 
   console.log('Step 1: Encoding frames...');
   spawnSync('ffmpeg', [

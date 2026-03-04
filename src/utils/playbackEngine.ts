@@ -104,7 +104,14 @@ export async function calculateCompleteTimeline(project: any): Promise<PlaybackT
   for (let clipIndex = 0; clipIndex < project.clips.length; clipIndex++) {
     const clip = project.clips[clipIndex];
     const wordBoundaries = allWordBoundaries[clipIndex];
-    const clipDuration = getClipDurationFromBoundaries(wordBoundaries);
+    const speechDuration = getClipDurationFromBoundaries(wordBoundaries);
+    // Extend clip if any media needs more time after its trigger word.
+    const mediaRequiredDuration = (clip.media || []).reduce((maxDuration: number, media: any) => {
+      if (typeof media.duration !== 'number') return maxDuration;
+      const localStart = findWordStartTime(wordBoundaries, media.words);
+      return Math.max(maxDuration, localStart + media.duration);
+    }, 0);
+    const clipDuration = Math.max(speechDuration, mediaRequiredDuration);
     const clipStartTime = globalTime;
     const clipEndTime = clipStartTime + clipDuration;
     
@@ -179,7 +186,25 @@ export function calculateEstimatedTimeline(project: any): PlaybackTimeline {
   
   project.clips.forEach((clip: any, clipIndex: number) => {
     const words = (clip.speech || '').split(/\s+/).filter((w: string) => w.length > 0);
-    const clipDuration = Math.max(2, words.length * 0.5);
+    const speechDuration = Math.max(2, words.length * 0.5);
+    const mediaRequiredDuration = (clip.media || []).reduce((maxDuration: number, media: any) => {
+      if (typeof media.duration !== 'number') return maxDuration;
+
+      let estimatedStartTime = 0;
+      if (media.words) {
+        const triggerWords = media.words.trim().split(/\s+/);
+        const firstWord = triggerWords[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+        const wordIndex = words.findIndex((w: string) =>
+          w.toLowerCase().replace(/[^a-z0-9]/g, '') === firstWord
+        );
+        if (wordIndex !== -1) {
+          estimatedStartTime = wordIndex * 0.5;
+        }
+      }
+
+      return Math.max(maxDuration, estimatedStartTime + media.duration);
+    }, 0);
+    const clipDuration = Math.max(speechDuration, mediaRequiredDuration);
     const clipStartTime = globalTime;
     const clipEndTime = clipStartTime + clipDuration;
     

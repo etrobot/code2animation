@@ -36,29 +36,45 @@ export default defineConfig(({mode}) => {
               }
 
               const entries = fs.readdirSync(projectsDir, { withFileTypes: true });
-              const projects = entries
-                .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
-                .map(entry => {
-                  const projectId = entry.name;
-                  const jsonPath = path.join(projectsDir, projectId, `${projectId}.json`);
-                  
-                  // Check if project JSON exists
-                  if (fs.existsSync(jsonPath)) {
-                    try {
-                      const projectData = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-                      return {
-                        id: projectId,
-                        name: projectData.name || projectId,
-                        description: projectData.description || ''
-                      };
-                    } catch (e) {
-                      console.error(`Failed to parse ${jsonPath}:`, e);
-                      return null;
-                    }
-                  }
-                  return null;
-                })
-                .filter(Boolean);
+              const projectMap = new Map<string, { id: string; name: string; description: string }>();
+
+              // Support top-level format: public/projects/<projectId>.json
+              const topLevelJsonFiles = entries.filter(entry => entry.isFile() && entry.name.endsWith('.json'));
+              for (const file of topLevelJsonFiles) {
+                const projectId = path.basename(file.name, '.json');
+                const jsonPath = path.join(projectsDir, file.name);
+                try {
+                  const projectData = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+                  projectMap.set(projectId, {
+                    id: projectId,
+                    name: projectData.name || projectId,
+                    description: projectData.description || ''
+                  });
+                } catch (e) {
+                  console.error(`Failed to parse ${jsonPath}:`, e);
+                }
+              }
+
+              // Support nested format: public/projects/<projectId>/<projectId>.json
+              const directories = entries.filter(entry => entry.isDirectory() && !entry.name.startsWith('.'));
+              for (const entry of directories) {
+                const projectId = entry.name;
+                const jsonPath = path.join(projectsDir, projectId, `${projectId}.json`);
+                if (!fs.existsSync(jsonPath)) continue;
+
+                try {
+                  const projectData = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+                  projectMap.set(projectId, {
+                    id: projectId,
+                    name: projectData.name || projectId,
+                    description: projectData.description || ''
+                  });
+                } catch (e) {
+                  console.error(`Failed to parse ${jsonPath}:`, e);
+                }
+              }
+
+              const projects = Array.from(projectMap.values());
 
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify({ projects }));

@@ -10,10 +10,12 @@ async function ensureDir(dir: string) {
 }
 
 function loadVideoProject(projectId: string): VideoProject {
-  const projectPath = path.resolve(process.cwd(), 'public', 'projects', projectId, `${projectId}.json`);
-  
+  const preferredPath = path.resolve(process.cwd(), 'public', 'projects', projectId, `${projectId}.json`);
+  const fallbackPath = path.resolve(process.cwd(), 'public', 'projects', `${projectId}.json`);
+  const projectPath = fs.existsSync(preferredPath) ? preferredPath : fallbackPath;
+
   if (!fs.existsSync(projectPath)) {
-    throw new Error(`Project file not found: ${projectPath}`);
+    throw new Error(`Project file not found. Tried: ${preferredPath} and ${fallbackPath}`);
   }
 
   const raw = fs.readFileSync(projectPath, 'utf-8');
