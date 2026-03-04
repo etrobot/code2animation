@@ -1,190 +1,310 @@
+import { TransitionKind } from '@/types';
+
 /**
- * Playback Engine - Shared logic for both App and render script
- * Handles timing calculations, clip navigation, and audio synchronization
+ * Simplified Playback Engine - Pre-calculated timeline
  */
 
-export interface PlaybackState {
-  clipIndex: number;
-  localTime: number;
-}
-
-export interface AudioTiming {
-  clipIndex: number;
-  duration: number;
+export interface MediaItem {
+  id: string;
+  src: string;
   startTime: number;
   endTime: number;
+  duration: number;
+  words: string;
+  clipIndex: number;
+  mediaIndex: number;
+  transition2next?: TransitionKind;
+  transitionDuration?: number;
+  stayInClip?: boolean;
+  clipStartTime: number;
+  clipEndTime: number;
+}
+
+export interface PlaybackTimeline {
+  mediaItems: MediaItem[];
+  totalDuration: number;
+  clipDurations: number[];
+  clipStartTimes: number[];
+}
+
+export interface WordBoundary {
+  text: string;
+  startTime: number; // in seconds
+  duration: number;  // in seconds
 }
 
 /**
- * Calculate total duration of all clips
- * @param processedClips - Array of processed clips
- * @param audioCache - Map of audio elements (optional, for browser)
- * @param projectId - Project ID for cache key lookup
- * @returns Total duration in seconds
+ * Load and parse word boundaries from audio JSON file
  */
-export function calculateTotalDuration(
-  processedClips: any[],
-  audioCache?: Map<string, HTMLAudioElement>,
-  projectId?: string
-): number {
-  let total = 0;
-  
-  for (const clip of processedClips) {
-    // Try to get audio duration from cache
-    if (audioCache && projectId) {
-      const audioIdx = processedClips.indexOf(clip);
-      const audio = audioCache.get(`${projectId}-${audioIdx}`);
-      
-      if (audio && audio.duration) {
-        total += audio.duration;
-        continue;
-      }
-    }
+async function loadWordBoundaries(projectName: string, clipIndex: number): Promise<WordBoundary[]> {
+  try {
+    const response = await fetch(`/projects/${projectName}/audio/${clipIndex}.json`);
+    const data = await response.json();
     
-    // Fallback to clip duration
-    total += clip.duration || 4;
+    return data.map((item: any) => {
+      const wordData = item.Metadata[0].Data;
+      return {
+        text: wordData.text.Text,
+        startTime: wordData.Offset / 10000000, // Convert from 100ns to seconds
+        duration: wordData.Duration / 10000000
+      };
+    });
+  } catch (error) {
+    console.warn(`Failed to load word boundaries for clip ${clipIndex}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Find the start time of a word or phrase in word boundaries
+ */
+function findWordStartTime(wordBoundaries: WordBoundary[], targetWords: string): number {
+  if (!targetWords || wordBoundaries.length === 0) return 0;
+  
+  const words = targetWords.trim().split(/\s+/);
+  const firstWord = words[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+  
+  const boundary = wordBoundaries.find(wb => 
+    wb.text.toLowerCase().replace(/[^a-z0-9]/g, '') === firstWord
+  );
+  
+  return boundary ? boundary.startTime : 0;
+}
+
+/**
+ * Get total duration from word boundaries
+ */
+function getClipDurationFromBoundaries(wordBoundaries: WordBoundary[]): number {
+  if (wordBoundaries.length === 0) return 2; // fallback
+  
+  const lastBoundary = wordBoundaries[wordBoundaries.length - 1];
+  return lastBoundary.startTime + lastBoundary.duration;
+}
+
+/**
+ * Pre-calculate complete timeline with all media items and their exact timing
+ */
+export async function calculateCompleteTimeline(project: any): Promise<PlaybackTimeline> {
+  const projectName = project.name;
+  const basePath = `/projects/${projectName}/footage`;
+  const mediaItems: MediaItem[] = [];
+  const clipDurations: number[] = [];
+  const clipStartTimes: number[] = [];
+  
+  let globalTime = 0;
+  
+  // Load all word boundaries first
+  const allWordBoundaries: WordBoundary[][] = [];
+  for (let clipIndex = 0; clipIndex < project.clips.length; clipIndex++) {
+    const wordBoundaries = await loadWordBoundaries(projectName, clipIndex);
+    allWordBoundaries.push(wordBoundaries);
   }
   
-  return total;
-}
-
-/**
- * Calculate audio timings for all speech clips
- * @param processedClips - Array of processed clips
- * @param audioCache - Map of audio elements
- * @param projectId - Project ID for cache key lookup
- * @returns Array of audio timings
- */
-export function calculateAudioTimings(
-  processedClips: any[],
-  audioCache: Map<string, HTMLAudioElement>,
-  projectId: string
-): AudioTiming[] {
-  const timings: AudioTiming[] = [];
-  let currentTime = 0;
-  let audioIndex = 0;
-  
-  for (const clip of processedClips) {
-    const audio = audioCache.get(`${projectId}-${audioIndex}`);
-    const duration = audio?.duration || clip.duration || 4;
+  // Process each clip with accurate timing
+  for (let clipIndex = 0; clipIndex < project.clips.length; clipIndex++) {
+    const clip = project.clips[clipIndex];
+    const wordBoundaries = allWordBoundaries[clipIndex];
+    const clipDuration = getClipDurationFromBoundaries(wordBoundaries);
+    const clipStartTime = globalTime;
+    const clipEndTime = clipStartTime + clipDuration;
     
-    timings.push({
-      clipIndex: audioIndex,
-      duration,
-      startTime: currentTime,
-      endTime: currentTime + duration
+    clipDurations.push(clipDuration);
+    clipStartTimes.push(clipStartTime);
+    
+    // Process each media item in the clip
+    (clip.media || []).forEach((media: any, mediaIndex: number) => {
+      const localStart = findWordStartTime(wordBoundaries, media.words);
+      const duration = media.duration || 1;
+      const startTime = clipStartTime + localStart;
+      const defaultEnd = startTime + duration;
+      const stayInClip = media.stayInClip ?? (typeof media.stay === 'number' ? media.stay > 0 : false);
+      const endTime = stayInClip ? clipEndTime : defaultEnd;
+      
+      mediaItems.push({
+        id: `${clipIndex}-${mediaIndex}`,
+        src: `${basePath}/${media.src}`,
+        startTime,
+        endTime,
+        duration,
+        words: media.words || '',
+        clipIndex,
+        mediaIndex,
+        transition2next: media.transition2next,
+        transitionDuration: media.transitionDuration,
+        stayInClip,
+        clipStartTime,
+        clipEndTime
+      });
     });
     
-    currentTime += duration;
-    audioIndex++;
+    globalTime += clipDuration;
   }
   
-  return timings;
+  // Sort by start time
+  mediaItems.sort((a, b) => a.startTime - b.startTime);
+  
+  console.log('[Timeline] Complete timeline calculated:', {
+    totalItems: mediaItems.length,
+    totalDuration: globalTime,
+    clipDurations,
+    clipStartTimes,
+    mediaItems: mediaItems.map(m => ({
+      id: m.id,
+      src: m.src.split('/').pop(),
+      startTime: m.startTime.toFixed(2),
+      endTime: m.endTime.toFixed(2),
+      words: m.words
+    }))
+  });
+  
+  return {
+    mediaItems,
+    totalDuration: globalTime,
+    clipDurations,
+    clipStartTimes
+  };
 }
 
 /**
- * Seek to a specific time in the playback
- * @param targetTime - Time in seconds to seek to
- * @param processedClips - Array of processed clips
- * @param audioCache - Map of audio elements (optional)
- * @param projectId - Project ID for cache key lookup (optional)
- * @returns PlaybackState with clipIndex and localTime
+ * Synchronous version with estimated timing for immediate use
  */
-export function seekToTime(
-  targetTime: number,
-  processedClips: any[],
-  audioCache?: Map<string, HTMLAudioElement>,
-  projectId?: string
-): PlaybackState {
-  if (processedClips.length === 0) {
-    return { clipIndex: 0, localTime: 0 };
-  }
-
-  if (targetTime <= 0) {
-    return { clipIndex: 0, localTime: 0 };
-  }
-
-  let totalDuration = 0;
-  for (let i = 0; i < processedClips.length; i++) {
-    const clip = processedClips[i];
-    const clipDuration = (audioCache && projectId)
-      ? (audioCache.get(`${projectId}-${i}`)?.duration || clip.duration || 4)
-      : (clip.duration || 4);
-    totalDuration += clipDuration;
-  }
-
-  if (targetTime >= totalDuration) {
-    const lastIndex = processedClips.length - 1;
-    const lastClip = processedClips[lastIndex];
-    const lastDuration = (audioCache && projectId)
-      ? (audioCache.get(`${projectId}-${lastIndex}`)?.duration || lastClip.duration || 4)
-      : (lastClip.duration || 4);
-
-    return {
-      clipIndex: lastIndex,
-      localTime: lastDuration
-    };
-  }
-
-  let accumulated = 0;
-  let targetClipIndex = 0;
-  let localTime = 0;
+export function calculateEstimatedTimeline(project: any): PlaybackTimeline {
+  const projectName = project.name;
+  const basePath = `/projects/${projectName}/footage`;
+  const mediaItems: MediaItem[] = [];
+  const clipDurations: number[] = [];
+  const clipStartTimes: number[] = [];
   
-  for (let i = 0; i < processedClips.length; i++) {
-    const clip = processedClips[i];
-    let clipDuration = 0;
+  let globalTime = 0;
+  
+  project.clips.forEach((clip: any, clipIndex: number) => {
+    const words = (clip.speech || '').split(/\s+/).filter((w: string) => w.length > 0);
+    const clipDuration = Math.max(2, words.length * 0.5);
+    const clipStartTime = globalTime;
+    const clipEndTime = clipStartTime + clipDuration;
     
-    // Try to get audio duration from cache
-    if (audioCache && projectId) {
-      const audio = audioCache.get(`${projectId}-${i}`);
-      clipDuration = audio?.duration || clip.duration || 4;
-    } else {
-      clipDuration = clip.duration || 4;
+    clipDurations.push(clipDuration);
+    clipStartTimes.push(clipStartTime);
+    
+    (clip.media || []).forEach((media: any, mediaIndex: number) => {
+      // Estimate start time based on word position
+      let estimatedStartTime = 0;
+      if (media.words) {
+        const triggerWords = media.words.trim().split(/\s+/);
+        const firstWord = triggerWords[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+        const wordIndex = words.findIndex((w: string) =>
+          w.toLowerCase().replace(/[^a-z0-9]/g, '') === firstWord
+        );
+        if (wordIndex !== -1) {
+          estimatedStartTime = wordIndex * 0.5;
+        }
+      }
+      
+      const duration = media.duration || 1;
+      const startTime = clipStartTime + estimatedStartTime;
+      const defaultEnd = startTime + duration;
+      const stayInClip = media.stayInClip ?? (typeof media.stay === 'number' ? media.stay > 0 : false);
+      const endTime = stayInClip ? clipEndTime : defaultEnd;
+      
+      mediaItems.push({
+        id: `${clipIndex}-${mediaIndex}`,
+        src: `${basePath}/${media.src}`,
+        startTime,
+        endTime,
+        duration,
+        words: media.words || '',
+        clipIndex,
+        mediaIndex,
+        transition2next: media.transition2next,
+        transitionDuration: media.transitionDuration,
+        stayInClip,
+        clipStartTime,
+        clipEndTime
+      });
+    });
+    
+    globalTime += clipDuration;
+  });
+  
+  // Sort by start time
+  mediaItems.sort((a, b) => a.startTime - b.startTime);
+  
+  return {
+    mediaItems,
+    totalDuration: globalTime,
+    clipDurations,
+    clipStartTimes
+  };
+}
+
+/**
+ * Get current active media based on global time from pre-calculated timeline
+ */
+export function getCurrentMediaFromTimeline(timeline: PlaybackTimeline, globalTime: number): MediaItem | null {
+  // Find the media that should be active at this time
+  for (const media of timeline.mediaItems) {
+    if (globalTime >= media.startTime && globalTime < media.endTime) {
+      return media;
     }
-    
-    if (accumulated + clipDuration >= targetTime) {
-      targetClipIndex = i;
-      localTime = targetTime - accumulated;
+  }
+  
+  // If no media is active, return the last media that has started
+  let lastStartedMedia: MediaItem | null = null;
+  for (const media of timeline.mediaItems) {
+    if (media.startTime <= globalTime) {
+      lastStartedMedia = media;
+    } else {
       break;
+    }
+  }
+  
+  return lastStartedMedia;
+}
+
+/**
+ * Get clip index and local time from global time
+ */
+export function getClipPositionFromGlobalTime(timeline: PlaybackTimeline, globalTime: number): { clipIndex: number, localTime: number } {
+  let accumulated = 0;
+  
+  for (let i = 0; i < timeline.clipDurations.length; i++) {
+    const clipDuration = timeline.clipDurations[i];
+    
+    if (globalTime < accumulated + clipDuration) {
+      return {
+        clipIndex: i,
+        localTime: globalTime - accumulated
+      };
     }
     
     accumulated += clipDuration;
   }
   
+  // If beyond all clips, return last clip
+  const lastClipIndex = timeline.clipDurations.length - 1;
   return {
-    clipIndex: targetClipIndex,
-    localTime
+    clipIndex: lastClipIndex,
+    localTime: timeline.clipDurations[lastClipIndex]
   };
 }
 
 /**
- * Get the current time in the overall playback
- * @param clipIndex - Current clip index
- * @param localTime - Time within current clip
- * @param processedClips - Array of processed clips
- * @param audioCache - Map of audio elements (optional)
- * @param projectId - Project ID for cache key lookup (optional)
- * @returns Global time in seconds
+ * Get global time from clip position
  */
-export function getGlobalTime(
-  clipIndex: number,
-  localTime: number,
-  processedClips: any[],
-  audioCache?: Map<string, HTMLAudioElement>,
-  projectId?: string
-): number {
+export function getGlobalTimeFromClipPosition(timeline: PlaybackTimeline, clipIndex: number, localTime: number): number {
   let accumulated = 0;
   
   for (let i = 0; i < clipIndex; i++) {
-    const clip = processedClips[i];
-    
-    if (audioCache && projectId) {
-      const audio = audioCache.get(`${projectId}-${i}`);
-      accumulated += audio?.duration || clip.duration || 4;
-    } else {
-      accumulated += clip.duration || 4;
-    }
+    accumulated += timeline.clipDurations[i];
   }
   
   return accumulated + localTime;
+}
+
+/**
+ * Seek to specific time and return clip position
+ */
+export function seekToTime(timeline: PlaybackTimeline, targetTime: number): { clipIndex: number, localTime: number } {
+  const clampedTime = Math.max(0, Math.min(targetTime, timeline.totalDuration));
+  return getClipPositionFromGlobalTime(timeline, clampedTime);
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, Monitor, Smartphone, SkipForward, SkipBack, RotateCcw, Wand2 } from 'lucide-react';
+import { Play, Pause, Monitor, Smartphone, SkipForward, SkipBack, RotateCcw } from 'lucide-react';
 
 interface ProjectInfo {
   id: string;
@@ -24,7 +24,6 @@ interface PlaybackControlsProps {
   
   // UI state
   isPortrait: boolean;
-  disableTransitions: boolean;
   
   // Event handlers
   onProjectChange: (projectId: string) => void;
@@ -33,7 +32,6 @@ interface PlaybackControlsProps {
   onPrevClip: () => void;
   onReset: () => void;
   onToggleOrientation: () => void;
-  onToggleTransitions: () => void;
 }
 
 export default function PlaybackControls({
@@ -48,14 +46,12 @@ export default function PlaybackControls({
   clipDuration,
   totalClips,
   isPortrait,
-  disableTransitions,
   onProjectChange,
   onTogglePlay,
   onNextClip,
   onPrevClip,
   onReset,
-  onToggleOrientation,
-  onToggleTransitions
+  onToggleOrientation
 }: PlaybackControlsProps) {
   // Use availableProjects if available, otherwise fallback to loaded projects
   const projectList = availableProjects.length > 0 
@@ -93,18 +89,6 @@ export default function PlaybackControls({
           title={isPortrait ? "Switch to Landscape" : "Switch to Portrait"}
         >
           {isPortrait ? <Monitor size={18} /> : <Smartphone size={18} />}
-        </button>
-
-        <button
-          onClick={onToggleTransitions}
-          className={`p-2 rounded transition-colors ${
-            disableTransitions 
-              ? 'bg-red-600/20 text-red-500 hover:bg-red-600/30' 
-              : 'hover:bg-white/10 text-zinc-400 hover:text-white'
-          }`}
-          title={disableTransitions ? "Enable Transitions" : "Disable Transitions"}
-        >
-          <Wand2 size={18} className={disableTransitions ? 'opacity-50' : ''} />
         </button>
       </div>
 

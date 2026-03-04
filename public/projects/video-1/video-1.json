@@ -9,14 +9,14 @@
         {
           "src": "agentsaas_intro_text.html",
           "words": "Introducing the Agent",
-          "transition2next": "fade",
-          "duration": 0.5
+          "transition2next": "slide2Left",
+          "transitionDuration": 0.65
         },
         {
           "src": "agentsaas_intro_toggle.html",
           "words": "new way to",
-          "transition2next": "fade",
-          "duration": 0.8
+          "transition2next": "zoom",
+          "transitionDuration": 0.65
         }
       ]
     },
@@ -27,8 +27,8 @@
         {
           "src": "agentsaas_complex_task.html",
           "words": "complex financial research",
-          "transition2next": "slideUp",
-          "duration": 0.6
+          "transition2next": "zoom",
+          "transitionDuration": 0.65
         }
       ]
     },
@@ -39,15 +39,15 @@
         {
           "src": "agentsaas_multimedia.html",
           "words": "Extract insights from",
-          "transition2next": "fade",
-          "duration": 0.8,
-          "stay": 1
+          "transition2next": "slide2Left",
+          "transitionDuration": 0.65,
+          "stayInClip": true
         },
         {
           "src": "agentsaas_slack.html",
           "words": "stay connected with",
-          "transition2next": "slideRight",
-          "duration": 0.7
+          "transition2next": "fade",
+          "transitionDuration": 0.65
         }
       ]
     },

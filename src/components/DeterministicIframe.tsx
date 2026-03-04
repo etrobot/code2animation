@@ -59,7 +59,6 @@ export const DeterministicIframe = ({ src, className = '', title, onLoad }: Dete
             sandbox="allow-scripts allow-same-origin"
             style={{
                 opacity: isLoaded ? 1 : 0,
-                transition: 'opacity 120ms linear',
                 backgroundColor: 'transparent'
             }}
         />

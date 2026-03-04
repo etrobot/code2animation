@@ -5,15 +5,25 @@ import { useTTS } from './hooks/useTTS';
 import { useProject } from './hooks/useProject';
 import { usePlayback } from './hooks/usePlayback';
 import { VideoClip } from '@/types';
-import { processClips } from './utils/clipProcessing';
-import { getCurrentRenderState } from './utils/renderState';
+
 import { generateAudio, loadAudioFiles, checkAudioExists, getSpeechClips } from './utils/audioManager';
-import { calculateTotalDuration, calculateAudioTimings, seekToTime, getGlobalTime } from './utils/playbackEngine';
+import { 
+  calculateCompleteTimeline, 
+  calculateEstimatedTimeline, 
+  getCurrentMediaFromTimeline, 
+  getClipPositionFromGlobalTime,
+  getGlobalTimeFromClipPosition,
+  seekToTime,
+  PlaybackTimeline 
+} from './utils/playbackEngine';
+import { getActiveMediaStates } from '@/utils/transitionEngine';
 
 export default function App() {
   const [audioCache, setAudioCache] = useState<Map<string, HTMLAudioElement>>(new Map());
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [currentWord, setCurrentWord] = useState<string>('');
+  const [mediaItems, setMediaItems] = useState<any[]>([]);
+  const [timeline, setTimeline] = useState<PlaybackTimeline | null>(null);
   const [audioInitialized, setAudioInitialized] = useState(false);
   const [iframesLoaded, setIframesLoaded] = useState(0);
 
@@ -32,21 +42,44 @@ export default function App() {
 
   const [configError, setConfigError] = useState<string | null>(null);
 
-  const processedClips = useMemo(() => {
-    if (!currentProject) return [];
+  // Calculate complete timeline once
+  useEffect(() => {
+    if (!currentProject) {
+      setTimeline(null);
+      setMediaItems([]);
+      return;
+    }
 
     try {
       setConfigError(null);
-      return processClips(currentProject);
+      
+      // First, create estimated timeline for immediate use
+      const estimatedTimeline = calculateEstimatedTimeline(currentProject);
+      setTimeline(estimatedTimeline);
+      setMediaItems(estimatedTimeline.mediaItems);
+      console.log('[Timeline] Estimated timeline ready:', estimatedTimeline);
+      
+      // Then, calculate accurate timeline with word boundaries
+      calculateCompleteTimeline(currentProject).then(accurateTimeline => {
+        setTimeline(accurateTimeline);
+        setMediaItems(accurateTimeline.mediaItems);
+        console.log('[Timeline] Accurate timeline ready:', accurateTimeline);
+      }).catch(error => {
+        console.warn('[Timeline] Failed to load accurate timeline, using estimates:', error);
+      });
     } catch (error: any) {
-      setConfigError(error.message || 'Failed to process clips');
+      setConfigError(error.message || 'Failed to process project');
       console.error('[Config Error]', error);
-      return [];
+      setTimeline(null);
+      setMediaItems([]);
     }
   }, [currentProject]);
 
+  const processedClips = useMemo(() => {
+    return currentProject?.clips || [];
+  }, [currentProject]);
+
   const [isPortrait, setIsPortrait] = useState(initialPortrait);
-  const [disableTransitions, setDisableTransitions] = useState(false);
 
   const {
     currentClipIndex,
@@ -59,7 +92,7 @@ export default function App() {
     nextClip,
     prevClip,
     reset
-  } = usePlayback(processedClips, disableTransitions);
+  } = usePlayback(processedClips);
 
   useEffect(() => {
     if (urlProject && urlProject !== activeProject) {
@@ -116,11 +149,15 @@ export default function App() {
   const CANVAS_WIDTH = isPortrait ? 1080 : 1920;
   const CANVAS_HEIGHT = isPortrait ? 1920 : 1080;
 
-  const clipDuration = currentClip?.duration || ttsDuration || 0;
-  const globalPlaybackTime = useMemo(
-    () => getGlobalTime(currentClipIndex, currentTime, processedClips),
-    [currentClipIndex, currentTime, processedClips]
-  );
+  const clipDuration = useMemo(() => {
+    if (!timeline || currentClipIndex >= timeline.clipDurations.length) return 4;
+    return timeline.clipDurations[currentClipIndex];
+  }, [timeline, currentClipIndex]);
+
+  const globalPlaybackTime = useMemo(() => {
+    if (!timeline) return 0;
+    return getGlobalTimeFromClipPosition(timeline, currentClipIndex, currentTime);
+  }, [timeline, currentClipIndex, currentTime]);
 
   useEffect(() => {
     const updateScale = () => {
@@ -143,32 +180,17 @@ export default function App() {
   // Handle clip advancement
   useEffect(() => {
     if (currentTime >= clipDuration && isPlaying) {
-      // Check if we're in a cross-clip transition
-      const currentClipData = processedClips[currentClipIndex];
-      const medias = currentClipData?.calculatedMedia || [];
-      const lastMedia = medias[medias.length - 1];
-
-      // If the last media has transition2next and transitions are enabled,
-      // the transition should have completed by now, so we can advance
       if (currentClipIndex < processedClips.length - 1) {
-        let nextIndex = currentClipIndex + 1;
-        if (disableTransitions && processedClips[nextIndex].type === 'transition') {
-          nextIndex++;
-        }
-        if (nextIndex < processedClips.length) {
-          setCurrentClipIndex(nextIndex);
-          setCurrentTime(0);
-          setCurrentWord(''); // Reset word on clip change
-        } else {
-          setIsPlaying(false);
-          setCurrentTime(clipDuration);
-        }
+        const nextIndex = currentClipIndex + 1;
+        setCurrentClipIndex(nextIndex);
+        setCurrentTime(0);
+        setCurrentWord(''); // Reset word on clip change
       } else {
         setIsPlaying(false);
         setCurrentTime(clipDuration);
       }
     }
-  }, [currentTime, clipDuration, isPlaying, currentClipIndex, processedClips, disableTransitions, setCurrentClipIndex, setCurrentTime, setIsPlaying]);
+  }, [currentTime, clipDuration, isPlaying, currentClipIndex, processedClips, setCurrentClipIndex, setCurrentTime, setIsPlaying]);
 
   // Auto-start TTS when clip changes and is playing (only if audio is initialized)
   useEffect(() => {
@@ -324,42 +346,61 @@ export default function App() {
     setIsPortrait(!isPortrait);
   };
 
-  // Only calculate render state after audio is initialized (i.e., after first play)
-  // In record mode, always compute render state (audioInitialized is auto-set)
+  // 使用预计算的时间轴渲染状态
   const renderState = useMemo(() => {
-    if (!audioInitialized && !isRecordMode) {
-      // Return empty state before initialization
-      return {
-        activeMedias: [],
-        currentClip: processedClips[0]
-      };
+    if (!timeline) {
+      return { activeMedias: [], currentClip: null };
     }
-    return getCurrentRenderState(currentClipIndex, currentTime, processedClips, disableTransitions, currentWord);
-  }, [currentClipIndex, currentTime, processedClips, disableTransitions, currentWord, audioInitialized, isRecordMode]);
+
+    const activeMedias = getActiveMediaStates(timeline, globalPlaybackTime);
+    let mediasToRender = activeMedias;
+
+    if (mediasToRender.length === 0) {
+      const fallbackMedia = getCurrentMediaFromTimeline(timeline, globalPlaybackTime);
+      if (fallbackMedia) {
+        mediasToRender = [{ media: fallbackMedia, style: { opacity: 1, transform: 'translate3d(0, 0, 0)', zIndex: 1 } }];
+      }
+    }
+
+    if (mediasToRender[0]?.media) {
+      const firstMedia = mediasToRender[0].media;
+      console.log(`[Render] Global time ${globalPlaybackTime.toFixed(2)}s, Media: ${firstMedia.src.split('/').pop()}, Words: "${firstMedia.words}"`);
+    }
+
+    return {
+      activeMedias: mediasToRender,
+      currentClip: processedClips[currentClipIndex] || null,
+      timeline // Pass timeline to Player
+    };
+  }, [timeline, globalPlaybackTime, processedClips, currentClipIndex]);
 
   // Expose functions for rendering mode
   useEffect(() => {
-    if (isRecordMode) {
-      // Get total duration using shared engine
-      const getTotalDuration = () => {
-        return calculateTotalDuration(processedClips, audioCache, activeProject);
+    if (isRecordMode && timeline) {
+      // Get total duration using timeline
+      const getTotalDurationFunc = () => {
+        return timeline.totalDuration;
       };
 
-      // Seek to specific time using shared engine
+      // Seek to specific time using timeline
       const seekTo = (time: number) => {
-        const state = seekToTime(time, processedClips, audioCache, activeProject);
-        setCurrentClipIndex(state.clipIndex);
-        setCurrentTime(state.localTime);
+        const position = seekToTime(timeline, time);
+        setCurrentClipIndex(position.clipIndex);
+        setCurrentTime(position.localTime);
         setIsPlaying(false);
       };
 
-      // Get audio log with timings
+      // Get audio log with timings from timeline
       const getAudioLog = () => {
-        const timings = calculateAudioTimings(processedClips, audioCache, activeProject);
-        return timings.map(t => ({
-          file: `${activeProject}/audio/${t.clipIndex}.mp3`,
-          startTime: t.startTime
-        }));
+        let accumulated = 0;
+        return timeline.clipDurations.map((duration, index) => {
+          const result = {
+            file: `${activeProject}/audio/${index}.mp3`,
+            startTime: accumulated
+          };
+          accumulated += duration;
+          return result;
+        });
       };
 
       // Get current clip index
@@ -369,14 +410,14 @@ export default function App() {
 
       // Expose to window for puppeteer
       (window as any).seekTo = seekTo;
-      (window as any).getTotalDuration = getTotalDuration;
+      (window as any).getTotalDuration = getTotalDurationFunc;
       (window as any).getAudioLog = getAudioLog;
       (window as any).getCurrentClipIndex = getCurrentClipIndex;
       (window as any).suppressTTS = true;
 
       console.log('[Render Mode] Functions exposed to window');
     }
-  }, [isRecordMode, processedClips, audioCache, activeProject]);
+  }, [isRecordMode, timeline, activeProject, currentClipIndex]);
 
   if (isLoadingProject || !currentProject) {
     return (
@@ -439,7 +480,6 @@ export default function App() {
           clipDuration={clipDuration}
           totalClips={currentProject.clips.length}
           isPortrait={isPortrait}
-          disableTransitions={disableTransitions}
           onProjectChange={(projectId: string) => {
             stopTTS(); // Stop current TTS when switching projects
             setCurrentWord(''); // Reset word
@@ -456,7 +496,6 @@ export default function App() {
           onPrevClip={handlePrevClip}
           onReset={handleReset}
           onToggleOrientation={toggleOrientation}
-          onToggleTransitions={() => setDisableTransitions(!disableTransitions)}
         />
       )}
     </div>

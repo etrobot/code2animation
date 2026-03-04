@@ -176,6 +176,7 @@ When creating HTML animations for video rendering, use the **CSS variable timeli
 - `window.registerFrameAnimation(...)`
 - `requestAnimationFrame` loops for timeline progression
 - Implicit time from `Date.now()` / `performance.now()` for visual state
+- **Fade-out effects**: Elements should not disappear after animation completes. Use `opacity: var(--p)` instead of `opacity: calc(var(--p) * (1 - var(--fade)))` to keep elements visible at their final state.
 
 ### Recommended Template
 ```css

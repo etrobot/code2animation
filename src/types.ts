@@ -4,13 +4,17 @@ export interface AudioAlignment {
   character_end_times_seconds: number[];
 }
 
+export type TransitionKind = 'fade' | 'zoom' | 'slide2Left' | 'slideUp' | 'none';
+
 export interface MediaItem {
   src?: string;
   words?: string;
   type?: string;
   duration?: number;
-  transition2next?: string;
-  stay?: number; // Number of subsequent media switches this media should remain visible
+  transition2next?: TransitionKind;
+  transitionDuration?: number;
+  stayInClip?: boolean; // If true, media remains until clip end
+  stay?: number; // Legacy support: number of switches to stay visible
 }
 
 export interface VideoClip {

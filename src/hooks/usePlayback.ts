@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 
-export function usePlayback(processedClips: any[], disableTransitions: boolean) {
+export function usePlayback(processedClips: any[]) {
   const [currentClipIndex, setCurrentClipIndex] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -38,27 +38,17 @@ export function usePlayback(processedClips: any[], disableTransitions: boolean) 
 
   const nextClip = () => {
     if (currentClipIndex < processedClips.length - 1) {
-      let nextIndex = currentClipIndex + 1;
-      if (disableTransitions && processedClips[nextIndex].type === 'transition') {
-          nextIndex++;
-      }
-      if (nextIndex < processedClips.length) {
-          setCurrentClipIndex(nextIndex);
-          setCurrentTime(0);
-      }
+      const nextIndex = currentClipIndex + 1;
+      setCurrentClipIndex(nextIndex);
+      setCurrentTime(0);
     }
   };
 
   const prevClip = () => {
     if (currentClipIndex > 0) {
-      let prevIndex = currentClipIndex - 1;
-      if (disableTransitions && processedClips[prevIndex].type === 'transition') {
-          prevIndex--;
-      }
-      if (prevIndex >= 0) {
-          setCurrentClipIndex(prevIndex);
-          setCurrentTime(0);
-      }
+      const prevIndex = currentClipIndex - 1;
+      setCurrentClipIndex(prevIndex);
+      setCurrentTime(0);
     } else {
       setCurrentTime(0);
       setResetCounter((c) => c + 1);

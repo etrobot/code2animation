@@ -17,7 +17,7 @@ export const Player = ({ renderState, background, resetCounter, isPlaying, onIfr
   const preloadMedias = (renderState.preloadMedias || []).filter((media: any) => !activeIds.has(media?.id));
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-neutral-900">
+    <div className="absolute inset-0 overflow-hidden bg-neutral-900" style={{ transition: 'none' }}>
       {/* Background */}
       <div className="absolute inset-0">
         {background && background.endsWith('.html') ? (

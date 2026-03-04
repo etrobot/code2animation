@@ -373,10 +373,10 @@ body {
     align-items: center;
     gap: 1.5rem;
     width: 500px;
-    transform: translateX(50px);
-    opacity: 0;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     z-index: 50;
+    transform: translateX(0);
+    opacity: 1;
 }
 
 .slack-icon {
@@ -519,7 +519,6 @@ body {
 #tasks { opacity: clamp(0, calc(1 - ((var(--t) - 8.20) / 0.25)), 1); }
 .result-area { --p: clamp(0, calc((var(--t) - 8.45) / 0.75), 1); display: block; opacity: var(--p); transform: translateY(calc((1 - var(--p)) * 20px)); }
 .model-view { --p: clamp(0, calc((var(--t) - 0.2) / 0.8), 1); opacity: var(--p); transform: translateX(calc((1 - var(--p)) * 20px)); }
-.slack-notification { --p: clamp(0, calc((var(--t) - 0.8) / 0.5), 1); opacity: var(--p); transform: translateX(calc((1 - var(--p)) * 50px)); }
 .video-overlay { --p: clamp(0, calc((var(--t) - 0.5) / 0.5), 1); transform: scale(calc(0.9 + var(--p) * 0.1)); }
 .logo { --p: clamp(0, calc((var(--t) - 2.1) / 0.5), 1); opacity: var(--p); transform: scale(calc(0.5 + var(--p) * 0.5)); }
 .final-text { --p: clamp(0, calc((var(--t) - 2.1) / 0.5), 1); opacity: var(--p); transform: scale(calc(0.9 + var(--p) * 0.1)) translateY(calc((1 - var(--p)) * 20px)); }

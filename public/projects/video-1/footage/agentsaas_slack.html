@@ -11,7 +11,7 @@
 
 <body style="background: transparent;">
     <div class="screen-multi" style="background: transparent;">
-        <div class="slack-notification" id="slack" style="--tg: 0; --p: clamp(0, calc((var(--tg) - 0.1) / 0.5), 1); transform: translateX(calc((1 - var(--p)) * 100px)); opacity: var(--p);">
+        <div class="slack-notification" id="slack">
             <div class="slack-icon"></div>
             <div class="slack-content">
                 <div class="slack-header">
@@ -23,34 +23,7 @@
         </div>
     </div>
 
-    <script>
-        const root = document.documentElement;
-        let mediaStartGlobalTime = null;
-        let hasAnchoredStart = false;
-        let prevGlobalTime = 0;
 
-        window.onTimelineUpdate = (t, globalTime) => {
-            const safeClipTime = Number.isFinite(t) ? t : 0;
-            const safeGlobalTime = Number.isFinite(globalTime) ? globalTime : safeClipTime;
-
-            // Anchor local media time to first real global sync value.
-            if (!hasAnchoredStart) {
-                if (safeGlobalTime <= 0.001) {
-                    root.style.setProperty('--tg', '0.000000');
-                    return;
-                }
-                mediaStartGlobalTime = safeGlobalTime;
-                hasAnchoredStart = true;
-            } else if (safeGlobalTime < prevGlobalTime - 0.2) {
-                // Re-anchor when seeking backward or replaying.
-                mediaStartGlobalTime = safeGlobalTime;
-            }
-
-            const localTime = Math.max(0, safeGlobalTime - mediaStartGlobalTime);
-            prevGlobalTime = safeGlobalTime;
-            root.style.setProperty('--tg', localTime.toFixed(6));
-        };
-    </script>
 </body>
 
 </html>
