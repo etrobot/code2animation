@@ -5,6 +5,9 @@ const DEFAULT_TRANSITION_DURATION = 0.6;
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
 
+// Easing function for smoother animations
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
 const baseStyle = (zIndex: number) => ({
   opacity: 1,
   transform: 'translate3d(0, 0, 0)',
@@ -17,7 +20,8 @@ interface TransitionStyles {
 }
 
 function buildTransitionStyles(type: TransitionKind, progress: number): TransitionStyles {
-  const eased = progress;
+  const linear = progress;
+  const eased = easeOutCubic(progress);
 
   switch (type) {
     case 'zoom': {
@@ -36,7 +40,7 @@ function buildTransitionStyles(type: TransitionKind, progress: number): Transiti
     }
     case 'slide2Left': {
       const incomingX = (1 - eased) * 100;
-      const outgoingX = -eased * 100;
+      const outgoingX = -linear * 100;
       return {
         incoming: {
           transform: `translate3d(${incomingX.toFixed(2)}%, 0, 0)`
@@ -47,8 +51,8 @@ function buildTransitionStyles(type: TransitionKind, progress: number): Transiti
       };
     }
     case 'slideUp': {
-      const incomingY = (100 - eased * 100);
-      const outgoingY = -eased * 100;
+      const incomingY = (1 - eased) * 100;
+      const outgoingY = -linear * 100;
       return {
         incoming: {
           transform: `translate3d(0, ${incomingY.toFixed(2)}%, 0)`
@@ -122,22 +126,19 @@ const findTransitionSource = (
   primaryIndex: number,
   incoming: MediaItem
 ): MediaItem | null => {
+  // Check if this is the first media in its clip
+  const isFirstMediaInClip = timeline.mediaItems
+    .filter(m => m.clipIndex === incoming.clipIndex)
+    .sort((a, b) => a.startTime - b.startTime)[0]?.id === incoming.id;
+
   for (let idx = primaryIndex - 1; idx >= 0; idx--) {
     const candidate = timeline.mediaItems[idx];
-    if (!candidate?.transition2next || candidate.transition2next === 'none') {
-      continue;
-    }
-
-    // If incoming media is not the first media in its clip, only look within the same clip
-    const isFirstMediaInClip = timeline.mediaItems
-      .filter(m => m.clipIndex === incoming.clipIndex)
-      .sort((a, b) => a.startTime - b.startTime)[0]?.id === incoming.id;
     
+    // If incoming media is not the first media in its clip, only look within the same clip
     if (!isFirstMediaInClip && candidate.clipIndex !== incoming.clipIndex) {
-      // Don't use cross-clip transitions for non-first medias in a clip
       continue;
     }
-
+    
     return candidate;
   }
 
@@ -190,21 +191,21 @@ export function getActiveMediaStates(
   const transitionSource = findTransitionSource(timeline, primaryIndex, primary);
   let incomingStyle = baseStyle(100);
 
-  if (transitionSource) {
-    const duration = transitionSource.transitionDuration ?? DEFAULT_TRANSITION_DURATION;
+  if (primary.transitionIn && primary.transitionIn !== 'none') {
+    const duration = primary.transitionDuration ?? DEFAULT_TRANSITION_DURATION;
     const elapsed = globalTime - primary.startTime;
 
     if (duration > 0 && elapsed >= 0 && elapsed <= duration) {
       const progress = clamp01(elapsed / duration);
-      const { incoming, outgoing } = buildTransitionStyles(transitionSource.transition2next!, progress);
+      const { incoming, outgoing } = buildTransitionStyles(primary.transitionIn, progress);
 
       incomingStyle = { ...incomingStyle, ...incoming };
       
-      // Only apply outgoing transition if the source is not a stayInClip media in the same clip
-      if (!(transitionSource.stayInClip && transitionSource.clipIndex === primary.clipIndex)) {
+      // Only apply outgoing transition if we have a real transition source (not stayInClip in same clip)
+      if (transitionSource && !(transitionSource.stayInClip && transitionSource.clipIndex === primary.clipIndex)) {
         upsertState(states, transitionSource, { ...baseStyle(50), ...outgoing });
       }
-    } else if (elapsed < 0) {
+    } else if (elapsed < 0 && transitionSource) {
       // Primary hasn't started yet (seeking scenario) - show previous media only
       if (!(transitionSource.stayInClip && transitionSource.clipIndex === primary.clipIndex)) {
         upsertState(states, transitionSource, baseStyle(50));
@@ -228,9 +229,13 @@ export function getActiveMediaStates(
       .sort((a, b) => a.startTime - b.startTime);
 
     stayMediasFromPreviousClip.forEach((media, index) => {
+      // Use the first media of current clip's transitionIn to drive the exit of previous clip's stay medias
+      const currentClipFirstMedia = timeline.mediaItems
+        .filter(m => m.clipIndex === primary.clipIndex)
+        .sort((a, b) => a.startTime - b.startTime)[0];
+      
       const transitionType = (
-        exitDriver?.transition2next ??
-        media.transition2next ??
+        currentClipFirstMedia?.transitionIn ??
         'fade'
       ) as TransitionKind;
       if (transitionType === 'none') {
@@ -238,8 +243,7 @@ export function getActiveMediaStates(
       }
 
       const duration =
-        exitDriver?.transitionDuration ??
-        media.transitionDuration ??
+        currentClipFirstMedia?.transitionDuration ??
         DEFAULT_TRANSITION_DURATION;
       if (duration <= 0) return;
 

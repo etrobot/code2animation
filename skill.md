@@ -1,6 +1,6 @@
 # AgentSaaS Video Editor Skill
 
-A comprehensive video editing and rendering skill that enables AI agents to create code-driven animations with text-to-speech narration.
+A comprehensive video editing and rendering skill that enables AI agents to create code-driven animations with text-to-speech narration and smooth transitions.
 
 ## Purpose
 
@@ -9,6 +9,7 @@ This skill allows agents to:
 - Generate TTS audio narration using Microsoft Edge TTS
 - Render complete videos with synchronized audio and visual effects
 - Support both portrait and landscape video formats
+- Apply smooth transition effects between media elements
 
 ## Core Capabilities
 
@@ -17,18 +18,52 @@ This skill allows agents to:
 - Playback controls for testing and debugging
 - Support for transitions, media clips, and timing adjustments
 - Frame-by-frame seeking for precise editing
+- Live transition preview with easing effects
 
-### 2. TTS Audio Generation
+### 2. Transition System
+- **transitionIn**: Each media defines its own entrance animation
+- **Supported transitions**: fade, zoom, slide2Left, slideUp, none
+- **Easing**: Built-in easeOutCubic for smooth slide and zoom animations
+- **stayInClip**: Media can persist throughout entire clip duration
+- **Cross-clip transitions**: Automatic handling of clip boundaries
+
+### 3. TTS Audio Generation
 - Automated text-to-speech using Microsoft Edge TTS (msedge-tts)
 - Support for multiple voices (English and Chinese)
 - Word-level timing metadata for lip-sync and animations
 - Audio file caching for faster previews
 
-### 3. Video Rendering
+### 4. Video Rendering
 - Automated frame-by-frame rendering using Puppeteer
 - FFmpeg integration for video encoding and audio mixing
 - 30 FPS output at 1920x1080 (landscape) or 1080x1920 (portrait)
 - Deterministic rendering for consistent results
+- Transition effects preserved in final output
+
+## Project Configuration Format
+
+### Media Item Properties
+- **src**: HTML filename in the footage directory
+- **words**: Trigger phrase from speech that activates this media
+- **transitionIn**: Entrance animation type (optional)
+- **transitionDuration**: Duration in seconds (optional, default: 0.6s)
+- **stayInClip**: If true, media remains visible until clip ends (optional)
+
+### Transition Types
+- **fade**: Opacity transition (0 → 1)
+- **zoom**: Scale transition (2x → 1x) with opacity
+- **slide2Left**: Horizontal slide from right (100% → 0%)
+- **slideUp**: Vertical slide from bottom (100% → 0%)
+- **none**: No transition effect
+
+### Transition Behavior
+- **transitionIn**: Defines how this media enters the scene
+- **transitionDuration**: Duration in seconds (default: 0.6s)
+- **stayInClip**: If true, media remains visible until clip ends
+- **Easing**: slide2Left and slideUp use easeOutCubic for smooth deceleration
+
+### Reference Implementation
+See `public/projects/agentSaasPromoVideo.json` for a complete working example demonstrating all transition types and stayInClip behavior.
 
 ## Technical Requirements
 
@@ -136,16 +171,16 @@ public/
 
 ```bash
 # 1. Generate audio for a project
-pnpm generate-audio video-1
+pnpm generate-audio agentSaasPromoVideo
 
 # 2. Preview in browser
 pnpm dev
 
 # 3. Render final video
-pnpm render video-1
+pnpm render agentSaasPromoVideo
 
 # 4. Render portrait version
-pnpm render video-1 --portrait
+pnpm render agentSaasPromoVideo --portrait
 ```
 
 ## HTML Animation Guidelines
@@ -156,6 +191,7 @@ When creating HTML animations for video rendering, use the **CSS variable timeli
 - Renderer controls time: Puppeteer sets `--t` every frame.
 - Page only renders state: `DOM = f(t)`.
 - No lifecycle animation APIs (`play/start/reset`) and no hidden runtime state.
+- **Transition system handles entrance effects**: Don't implement slide/fade transitions in HTML - use the project's `transitionIn` property instead.
 
 ### ✅ Required Patterns
 - Define timeline root:
@@ -169,6 +205,7 @@ When creating HTML animations for video rendering, use the **CSS variable timeli
   ```
 - Express initial/ending states directly in CSS (seek-safe at any frame).
 - Use small deterministic JS only for content mapping (e.g., subtitle/text index from `t`).
+- **Let transition system handle entrance**: Focus on content animation, not entrance effects.
 
 ### 🚫 Forbidden Patterns
 - `transition`
@@ -176,6 +213,7 @@ When creating HTML animations for video rendering, use the **CSS variable timeli
 - `window.registerFrameAnimation(...)`
 - `requestAnimationFrame` loops for timeline progression
 - Implicit time from `Date.now()` / `performance.now()` for visual state
+- **Manual entrance transitions**: Don't implement slide/fade in HTML - use `transitionIn` in project config
 - **Fade-out effects**: Elements should not disappear after animation completes. Use `opacity: var(--p)` instead of `opacity: calc(var(--p) * (1 - var(--fade)))` to keep elements visible at their final state.
 
 ### Recommended Template

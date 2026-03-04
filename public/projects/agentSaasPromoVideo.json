@@ -1,5 +1,5 @@
 {
-  "name": "video-1",
+  "name": "agentSaasPromoVideo",
   "background": "global_bg.html",
   "clips": [
     {
@@ -8,14 +8,12 @@
       "media": [
         {
           "src": "agentsaas_intro_text.html",
-          "words": "Introducing the Agent",
-          "transition2next": "slide2Left",
-          "transitionDuration": 0.65
+          "words": "Introducing the Agent"
         },
         {
           "src": "agentsaas_intro_toggle.html",
           "words": "new way to",
-          "transition2next": "zoom",
+          "transitionIn": "slide2Left",
           "transitionDuration": 0.65
         }
       ]
@@ -27,7 +25,7 @@
         {
           "src": "agentsaas_complex_task.html",
           "words": "complex financial research",
-          "transition2next": "zoom",
+          "transitionIn": "zoom",
           "transitionDuration": 0.65
         }
       ]
@@ -39,14 +37,13 @@
         {
           "src": "agentsaas_multimedia.html",
           "words": "Extract insights from",
-          "transition2next": "slide2Left",
-          "transitionDuration": 0.65,
+          "transitionIn": "slideUp",
           "stayInClip": true
         },
         {
           "src": "agentsaas_slack.html",
           "words": "stay connected with",
-          "transition2next": "fade",
+          "transitionIn": "slide2Left",
           "transitionDuration": 0.65
         }
       ]
@@ -57,7 +54,9 @@
       "media": [
         {
           "src": "agentsaas_ending.html",
-          "words": "Experience the next"
+          "words": "Experience the next",
+          "transitionIn": "fade",
+          "transitionDuration": 0.65
         }
       ]
     }

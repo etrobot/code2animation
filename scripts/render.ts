@@ -11,7 +11,7 @@ const projectId = args.find(arg => !arg.startsWith('--') && arg !== 'portrait');
 
 if (!projectId) {
   console.error('Usage: npm run render <projectId> [--portrait] [--no-compress]');
-  console.error('Example: npm run render video-1');
+  console.error('Example: npm run render agentSaasPromoVideo');
   console.error('Options:');
   console.error('  --portrait        Render in portrait mode (1080x1920)');
   console.error('  --no-compress     Skip video compression after rendering');
@@ -124,7 +124,7 @@ async function findFreePort(startPort: number): Promise<number> {
 
 async function main() {
   // Load project config to check expected audio count
-  const projectConfigPath = path.resolve(process.cwd(), 'public', 'projects', projectId, `${projectId}.json`);
+  const projectConfigPath = path.resolve(process.cwd(), 'public', 'projects', `${projectId}.json`);
 
   if (!fs.existsSync(projectConfigPath)) {
     console.error(`❌ Project config not found: ${projectConfigPath}`);

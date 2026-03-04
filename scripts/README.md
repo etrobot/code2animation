@@ -11,7 +11,7 @@ pnpm generate-audio <projectId>
 
 Example:
 ```bash
-pnpm generate-audio video-1
+pnpm generate-audio agentSaasPromoVideo
 ```
 
 This will:
@@ -32,13 +32,13 @@ pnpm render <projectId> [--portrait] [--no-compress]
 Examples:
 ```bash
 # Render landscape video with compression
-pnpm render video-1
+pnpm render agentSaasPromoVideo
 
 # Render portrait video
-pnpm render video-1 --portrait
+pnpm render agentSaasPromoVideo --portrait
 
 # Render without compression
-pnpm render video-1 --no-compress
+pnpm render agentSaasPromoVideo --no-compress
 ```
 
 This will:
@@ -69,13 +69,13 @@ node scripts/compress.js <input-video-path> [--crf=23] [--preset=medium]
 Examples:
 ```bash
 # Compress with default settings (CRF=23, preset=medium)
-node scripts/compress.js public/video/render-video-1-landscape.mp4
+node scripts/compress.js public/video/render-agentSaasPromoVideo-landscape.mp4
 
 # High quality compression (larger file)
-node scripts/compress.js public/video/render-video-1-landscape.mp4 --crf=18 --preset=slow
+node scripts/compress.js public/video/render-agentSaasPromoVideo-landscape.mp4 --crf=18 --preset=slow
 
 # Fast compression (lower quality)
-node scripts/compress.js public/video/render-video-1-landscape.mp4 --crf=28 --preset=fast
+node scripts/compress.js public/video/render-agentSaasPromoVideo-landscape.mp4 --crf=28 --preset=fast
 ```
 
 ### Compression Settings

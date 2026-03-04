@@ -149,7 +149,7 @@ async function main() {
 
   if (!targetProject) {
     console.error('Usage: npx tsx scripts/generate-audio.ts <projectId>');
-    console.error('Example: npx tsx scripts/generate-audio.ts video-1');
+    console.error('Example: npx tsx scripts/generate-audio.ts agentSaasPromoVideo');
     process.exit(1);
   }
 

@@ -36,7 +36,7 @@ export function useProject(initialProject: string) {
     const loadProject = async () => {
       try {
         setIsLoadingProject(true);
-        const response = await fetch(`/projects/${activeProject}/${activeProject}.json`);
+        const response = await fetch(`/projects/${activeProject}.json`);
         if (response.ok) {
           const projectData = await response.json();
           

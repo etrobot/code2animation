@@ -40,7 +40,7 @@ const {
   stop
 } = useTTS({
   clip: currentClip,
-  projectId: 'video-1',
+  projectId: 'agentSaasPromoVideo',
   clipIndex: 0,
   onWordBoundary: (word) => console.log('Current word:', word),
   onEnd: () => console.log('Audio finished')

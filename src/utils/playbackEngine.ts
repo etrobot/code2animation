@@ -13,7 +13,7 @@ export interface MediaItem {
   words: string;
   clipIndex: number;
   mediaIndex: number;
-  transition2next?: TransitionKind;
+  transitionIn?: TransitionKind;
   transitionDuration?: number;
   stayInClip?: boolean;
   clipStartTime: number;
@@ -129,7 +129,7 @@ export async function calculateCompleteTimeline(project: any): Promise<PlaybackT
         words: media.words || '',
         clipIndex,
         mediaIndex,
-        transition2next: media.transition2next,
+        transitionIn: media.transitionIn,
         transitionDuration: media.transitionDuration,
         stayInClip,
         clipStartTime,
@@ -215,7 +215,7 @@ export function calculateEstimatedTimeline(project: any): PlaybackTimeline {
         words: media.words || '',
         clipIndex,
         mediaIndex,
-        transition2next: media.transition2next,
+        transitionIn: media.transitionIn,
         transitionDuration: media.transitionDuration,
         stayInClip,
         clipStartTime,

@@ -11,7 +11,7 @@ export interface MediaItem {
   words?: string;
   type?: string;
   duration?: number;
-  transition2next?: TransitionKind;
+  transitionIn?: TransitionKind;
   transitionDuration?: number;
   stayInClip?: boolean; // If true, media remains until clip end
   stay?: number; // Legacy support: number of switches to stay visible

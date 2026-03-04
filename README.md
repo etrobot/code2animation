@@ -19,13 +19,13 @@ Code-driven video creation with TTS narration and automated rendering.
 pnpm install
 
 # Generate TTS audio
-pnpm generate-audio video-1
+pnpm generate-audio agentSaasPromoVideo
 
 # Preview in browser
 pnpm dev
 
 # Render final video
-pnpm render video-1 [--portrait]
+pnpm render agentSaasPromoVideo [--portrait]
 ```
 
 ## Commands

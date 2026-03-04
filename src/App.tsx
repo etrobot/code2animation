@@ -34,7 +34,7 @@ export default function App() {
   const urlProject = urlParams.get('project');
 
   // Override defaults if in record mode
-  const initialProject = urlProject || 'video-1';
+  const initialProject = urlProject || 'agentSaasPromoVideo';
   const initialPortrait = urlOrientation === 'portrait';
 
   // Use custom hooks
