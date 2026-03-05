@@ -4,7 +4,7 @@ export interface AudioAlignment {
   character_end_times_seconds: number[];
 }
 
-export type TransitionKind = 'fade' | 'zoom' | 'slide2Left' | 'slideUp' | 'none';
+export type TransitionKind = 'fade' | 'zoom' | 'slide2Left' | 'slideUp' | 'shock' | 'none';
 
 export interface MediaItem {
   src?: string;

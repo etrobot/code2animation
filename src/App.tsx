@@ -17,6 +17,7 @@ import {
   PlaybackTimeline 
 } from './utils/playbackEngine';
 import { getActiveMediaStates } from '@/utils/transitionEngine';
+import { SHOCK_FLASH_DURATION } from '@/utils/transitionConstants';
 
 export default function App() {
   const [audioCache, setAudioCache] = useState<Map<string, HTMLAudioElement>>(new Map());
@@ -349,11 +350,12 @@ export default function App() {
   // 使用预计算的时间轴渲染状态
   const renderState = useMemo(() => {
     if (!timeline) {
-      return { activeMedias: [], currentClip: null };
+      return { activeMedias: [], currentClip: null, effects: { shockFlash: null }, timeline: null };
     }
 
     const activeMedias = getActiveMediaStates(timeline, globalPlaybackTime);
     let mediasToRender = activeMedias;
+    let shockFlash: { opacity: number } | null = null;
 
     if (mediasToRender.length === 0) {
       const fallbackMedia = getCurrentMediaFromTimeline(timeline, globalPlaybackTime);
@@ -367,10 +369,20 @@ export default function App() {
       console.log(`[Render] Global time ${globalPlaybackTime.toFixed(2)}s, Media: ${firstMedia.src.split('/').pop()}, Words: "${firstMedia.words}"`);
     }
 
+    const primaryMedia = getCurrentMediaFromTimeline(timeline, globalPlaybackTime);
+    if (primaryMedia?.transitionIn === 'shock') {
+      const elapsed = globalPlaybackTime - primaryMedia.startTime;
+      if (elapsed >= 0 && elapsed <= SHOCK_FLASH_DURATION) {
+        const opacity = 1 - Math.min(1, elapsed / SHOCK_FLASH_DURATION);
+        shockFlash = { opacity };
+      }
+    }
+
     return {
       activeMedias: mediasToRender,
       currentClip: processedClips[currentClipIndex] || null,
-      timeline // Pass timeline to Player
+      timeline, // Pass timeline to Player
+      effects: { shockFlash }
     };
   }, [timeline, globalPlaybackTime, processedClips, currentClipIndex]);
 

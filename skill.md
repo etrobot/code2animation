@@ -94,7 +94,7 @@ npx tsx scripts/generate-audio.ts <projectId>
 
 ### Video Rendering
 ```bash
-node scripts/render.js <projectId> [--portrait]
+npx tsx scripts/render.ts <projectId> [--portrait]
 ```
 - Starts a local Vite dev server
 - Launches Puppeteer to capture frames

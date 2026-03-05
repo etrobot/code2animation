@@ -15,6 +15,7 @@ export const Player = ({ renderState, background, resetCounter, isPlaying, onIfr
     renderState.activeMedias.map(({ media }: any) => media?.id).filter(Boolean)
   );
   const preloadMedias = (renderState.preloadMedias || []).filter((media: any) => !activeIds.has(media?.id));
+  const shockFlashOpacity = renderState.effects?.shockFlash?.opacity ?? 0;
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-neutral-900" style={{ transition: 'none' }}>
@@ -56,6 +57,13 @@ export const Player = ({ renderState, background, resetCounter, isPlaying, onIfr
           />
         ))}
       </div>
+
+      {shockFlashOpacity > 0 && (
+        <div
+          className="absolute inset-0 bg-[#FFF4D2] pointer-events-none"
+          style={{ opacity: shockFlashOpacity, transition: 'none', zIndex: 999 }}
+        />
+      )}
     </div>
   );
 };

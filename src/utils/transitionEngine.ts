@@ -1,5 +1,9 @@
 import type { TransitionKind } from '@/types';
 import type { MediaItem, PlaybackTimeline } from './playbackEngine';
+import {
+  SHOCK_SHAKE_AMPLITUDE,
+  SHOCK_SHAKE_DURATION
+} from './transitionConstants';
 
 const DEFAULT_TRANSITION_DURATION = 0.6;
 
@@ -13,6 +17,30 @@ const baseStyle = (zIndex: number) => ({
   transform: 'translate3d(0, 0, 0)',
   zIndex
 });
+
+const mergeTransforms = (
+  existing: string | number | undefined,
+  addition: string
+) => {
+  const base =
+    typeof existing === 'string'
+      ? existing.trim()
+      : typeof existing === 'number'
+        ? existing.toString()
+        : '';
+  if (!base) return addition;
+  if (!addition) return base;
+  return `${base} ${addition}`.trim();
+};
+
+const buildShockShakeTransform = (elapsed: number) => {
+  const normalized = clamp01(elapsed / SHOCK_SHAKE_DURATION);
+  const intensity = 1 - normalized;
+  const x = Math.sin(elapsed * 80) * intensity * SHOCK_SHAKE_AMPLITUDE;
+  const y = Math.cos(elapsed * 60) * intensity * (SHOCK_SHAKE_AMPLITUDE * 0.65);
+  const rotation = Math.sin(elapsed * 120) * intensity * 2; // degrees
+  return `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) rotate(${rotation.toFixed(2)}deg)`;
+};
 
 interface TransitionStyles {
   incoming: Record<string, string | number>;
@@ -71,6 +99,7 @@ function buildTransitionStyles(type: TransitionKind, progress: number): Transiti
           opacity: clamp01(1 - eased)
         }
       };
+    case 'shock':
     case 'none':
     default:
       return {
@@ -169,6 +198,7 @@ export function getActiveMediaStates(
   }
 
   const states: ActiveMediaState[] = [];
+  const elapsedSincePrimaryStart = globalTime - primary.startTime;
 
   // Keep all stay medias from the current clip visible until the clip ends
   const persistentMedias = timeline.mediaItems
@@ -193,10 +223,9 @@ export function getActiveMediaStates(
 
   if (primary.transitionIn && primary.transitionIn !== 'none') {
     const duration = primary.transitionDuration ?? DEFAULT_TRANSITION_DURATION;
-    const elapsed = globalTime - primary.startTime;
 
-    if (duration > 0 && elapsed >= 0 && elapsed <= duration) {
-      const progress = clamp01(elapsed / duration);
+    if (duration > 0 && elapsedSincePrimaryStart >= 0 && elapsedSincePrimaryStart <= duration) {
+      const progress = clamp01(elapsedSincePrimaryStart / duration);
       const { incoming, outgoing } = buildTransitionStyles(primary.transitionIn, progress);
 
       incomingStyle = { ...incomingStyle, ...incoming };
@@ -205,13 +234,25 @@ export function getActiveMediaStates(
       if (transitionSource && !(transitionSource.stayInClip && transitionSource.clipIndex === primary.clipIndex)) {
         upsertState(states, transitionSource, { ...baseStyle(50), ...outgoing });
       }
-    } else if (elapsed < 0 && transitionSource) {
+    } else if (elapsedSincePrimaryStart < 0 && transitionSource) {
       // Primary hasn't started yet (seeking scenario) - show previous media only
       if (!(transitionSource.stayInClip && transitionSource.clipIndex === primary.clipIndex)) {
         upsertState(states, transitionSource, baseStyle(50));
       }
       return states;
     }
+  }
+
+  if (
+    primary.transitionIn === 'shock' &&
+    elapsedSincePrimaryStart >= 0 &&
+    elapsedSincePrimaryStart <= SHOCK_SHAKE_DURATION
+  ) {
+    const shakeTransform = buildShockShakeTransform(elapsedSincePrimaryStart);
+    incomingStyle = {
+      ...incomingStyle,
+      transform: mergeTransforms(incomingStyle.transform, shakeTransform)
+    };
   }
 
   // Handle stay medias from the previous clip when transitioning to a new clip

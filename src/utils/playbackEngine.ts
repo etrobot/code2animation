@@ -1,4 +1,5 @@
 import { TransitionKind } from '@/types';
+import { SHOCK_TRANSITION_DURATION } from './transitionConstants';
 
 /**
  * Simplified Playback Engine - Pre-calculated timeline
@@ -31,6 +32,22 @@ export interface WordBoundary {
   text: string;
   startTime: number; // in seconds
   duration: number;  // in seconds
+}
+
+function normalizeTransition(
+  media: any
+): { transitionIn?: TransitionKind; transitionDuration?: number } {
+  const transitionIn = media.transitionIn as TransitionKind | undefined;
+  let transitionDuration = media.transitionDuration;
+
+  if (transitionIn === 'shock') {
+    transitionDuration =
+      typeof transitionDuration === 'number'
+        ? transitionDuration
+        : SHOCK_TRANSITION_DURATION;
+  }
+
+  return { transitionIn, transitionDuration };
 }
 
 /**
@@ -127,6 +144,8 @@ export async function calculateCompleteTimeline(project: any): Promise<PlaybackT
       const stayInClip = media.stayInClip ?? (typeof media.stay === 'number' ? media.stay > 0 : false);
       const endTime = stayInClip ? clipEndTime : defaultEnd;
       
+      const { transitionIn, transitionDuration } = normalizeTransition(media);
+
       mediaItems.push({
         id: `${clipIndex}-${mediaIndex}`,
         src: `${basePath}/${media.src}`,
@@ -136,8 +155,8 @@ export async function calculateCompleteTimeline(project: any): Promise<PlaybackT
         words: media.words || '',
         clipIndex,
         mediaIndex,
-        transitionIn: media.transitionIn,
-        transitionDuration: media.transitionDuration,
+        transitionIn,
+        transitionDuration,
         stayInClip,
         clipStartTime,
         clipEndTime
@@ -231,6 +250,8 @@ export function calculateEstimatedTimeline(project: any): PlaybackTimeline {
       const stayInClip = media.stayInClip ?? (typeof media.stay === 'number' ? media.stay > 0 : false);
       const endTime = stayInClip ? clipEndTime : defaultEnd;
       
+      const { transitionIn, transitionDuration } = normalizeTransition(media);
+
       mediaItems.push({
         id: `${clipIndex}-${mediaIndex}`,
         src: `${basePath}/${media.src}`,
@@ -240,8 +261,8 @@ export function calculateEstimatedTimeline(project: any): PlaybackTimeline {
         words: media.words || '',
         clipIndex,
         mediaIndex,
-        transitionIn: media.transitionIn,
-        transitionDuration: media.transitionDuration,
+        transitionIn,
+        transitionDuration,
         stayInClip,
         clipStartTime,
         clipEndTime
