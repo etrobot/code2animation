@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --t: 0;
+        }
+
+        body {
+            margin: 0;
+            width: 1080px;
+            height: 1920px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .card {
+            width: 85%;
+            background: rgba(15, 23, 42, 0.7);
+            border: 2px solid rgba(168, 85, 247, 0.5);
+            border-radius: 40px;
+            padding: 60px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 0 40px rgba(168, 85, 247, 0.2);
+
+            --start: 0.1;
+            --duration: 0.8;
+            --p: clamp(0, calc((var(--t) - var(--start)) / var(--duration)), 1);
+            --ease-out: calc(1 - (1 - var(--p)) * (1 - var(--p)));
+
+            opacity: var(--ease-out);
+            transform: scale(calc(0.9 + 0.1 * var(--ease-out)));
+        }
+
+        .header {
+            font-size: 70px;
+            font-weight: 800;
+            color: #d8b4fe;
+            margin-bottom: 20px;
+        }
+
+        .title {
+            font-size: 85px;
+            font-weight: bold;
+            margin-bottom: 50px;
+            background: linear-gradient(to right, #ffffff, #e9d5ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .image-container {
+            width: 100%;
+            height: 500px;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+
+            --img-start: 1;
+            --img-dur: 1;
+            --img-p: clamp(0, calc((var(--t) - var(--img-start)) / var(--img-dur)), 1);
+            --img-ease: calc(1 - (1 - var(--img-p)) * (1 - var(--img-p)));
+
+            opacity: var(--img-ease);
+            transform: translateY(calc((1 - var(--img-ease)) * 30px));
+        }
+
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+
+            --g-start: 2;
+            --g-dur: 0.8;
+            --g-p: clamp(0, calc((var(--t) - var(--g-start)) / var(--g-dur)), 1);
+            --g-ease: calc(1 - (1 - var(--g-p)) * (1 - var(--g-p)));
+
+            opacity: var(--g-ease);
+        }
+
+        .grid-item {
+            background: rgba(168, 85, 247, 0.1);
+            padding: 30px;
+            border-radius: 20px;
+            font-size: 35px;
+            text-align: center;
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            font-weight: 600;
+        }
+
+        .footer-text {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 45px;
+            font-weight: 500;
+            color: #fca5a5;
+
+            --f-start: 3;
+            --f-dur: 0.5;
+            --f-p: clamp(0, calc((var(--t) - var(--f-start)) / var(--f-dur)), 1);
+            --f-ease: calc(1 - (1 - var(--f-p)) * (1 - var(--f-p)));
+            opacity: var(--f-ease);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="header">03</div>
+        <div class="title">AI 外包公司 (AI员工)</div>
+
+        <div class="image-container">
+            <img src="https://cdn.botpenguin.com/assets/website/Types_of_AI_Agent_Workflow_8b24d6616f.webp"
+                alt="AI Employee">
+        </div>
+
+        <div class="grid-container">
+            <div class="grid-item">写 SEO 文章</div>
+            <div class="grid-item">回复客服邮件</div>
+            <div class="grid-item">生成营销文案</div>
+            <div class="grid-item">自动数据分析</div>
+        </div>
+
+        <div class="footer-text">
+            相当于 一个人运营整家代理公司
+        </div>
+    </div>
+</body>
+
+</html>

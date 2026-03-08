@@ -1,0 +1,159 @@
+{
+    "name": "openclaw_projects",
+    "background": "global_bg.html",
+    "clips": [
+        {
+            "type": "footage",
+            "speech": "以下是2026年最真实、有人实际赚到钱的5个 OpenClaw 项目类型。这些并不是概念，而是开发者或独立创业者已经跑通的模式。",
+            "media": [
+                {
+                    "src": "intro_title.html",
+                    "words": "以下是2026年",
+                    "stayInClip": true
+                },
+                {
+                    "src": "intro_subtitle.html",
+                    "words": "这些并不是概念",
+                    "transitionIn": "slideUp"
+                }
+            ]
+        },
+        {
+            "type": "footage",
+            "speech": "第一，AI内容自动化矩阵，这是最常见的赚钱方式。一个YouTuber用 OpenClaw 自动化内容生产：自动选题、写脚本、生成缩略图，并自动上传YouTube。结果5天获得50万播放，月收入达到700美元。很大程度上，其实都是 OpenClaw 在后台跑。",
+            "media": [
+                {
+                    "src": "project1_title.html",
+                    "words": "第一",
+                    "transitionIn": "slide2Left",
+                    "stayInClip": true
+                },
+                {
+                    "src": "project1_workflow.html",
+                    "words": "一个YouTuber用",
+                    "transitionIn": "zoom",
+                    "stayInClip": true
+                },
+                {
+                    "src": "project1_stats.html",
+                    "words": "结果5天",
+                    "transitionIn": "slideUp"
+                }
+            ]
+        },
+        {
+            "type": "footage",
+            "speech": "第二，AI自动S E O网站农场。OpenClaw可以找长尾关键词、写S E O文章、发布到WordPress以及内链优化。一个人可以跑50到500个内容站。很多独立开发者报告，S E O自动站可做到月收入两千到两万美元，原因很简单：OpenClaw可以每天生成一百篇以上的文章。",
+            "media": [
+                {
+                    "src": "project2_title.html",
+                    "words": "第二",
+                    "transitionIn": "slide2Left",
+                    "stayInClip": true
+                },
+                {
+                    "src": "project2_workflow.html",
+                    "words": "找长尾关键词",
+                    "transitionIn": "slideUp",
+                    "stayInClip": true
+                },
+                {
+                    "src": "project2_stats.html",
+                    "words": "很多独立开发者报告",
+                    "transitionIn": "zoom"
+                }
+            ]
+        },
+        {
+            "type": "footage",
+            "speech": "第三，AI外包工作室（当AI员工）。一个人开的自动化工作室里，OpenClaw当员工。它负责写S E O文章、回复客服、生成营销文案、处理邮件。现实案例中，一个数字营销人员用 OpenClaw 管理客户业务，相当于一个人运营整家代理公司。",
+            "media": [
+                {
+                    "src": "project3_title.html",
+                    "words": "第三",
+                    "transitionIn": "slide2Left",
+                    "stayInClip": true
+                },
+                {
+                    "src": "project3_tasks.html",
+                    "words": "它负责写S E O文章",
+                    "transitionIn": "zoom",
+                    "stayInClip": true
+                },
+                {
+                    "src": "project3_conclusion.html",
+                    "words": "相当于一个人运营",
+                    "transitionIn": "slideUp"
+                }
+            ]
+        },
+        {
+            "type": "footage",
+            "speech": "第四，AI线索抓取，这是B2B赚钱利器。OpenClaw可以浏览网站、抓取企业信息、找邮箱、写销售邮件。最终生成潜在客户列表并自动外联。卖线索数据或者代做B2B获客，一套客户名单可以卖到数千美元。",
+            "media": [
+                {
+                    "src": "project4_title.html",
+                    "words": "第四",
+                    "transitionIn": "slide2Left",
+                    "stayInClip": true
+                },
+                {
+                    "src": "project4_workflow.html",
+                    "words": "浏览网站",
+                    "transitionIn": "slideUp",
+                    "stayInClip": true
+                },
+                {
+                    "src": "project4_pricing.html",
+                    "words": "一套客户名单可以",
+                    "transitionIn": "zoom"
+                }
+            ]
+        },
+        {
+            "type": "footage",
+            "speech": "第五，AI自动SaaS运营。它是最赚钱的一类项目。OpenClaw帮你运营SaaS，例如AI客服或文案工具。它负责客服回复、写文档、运营社媒。一个独立开发者可以1个人运营整个SaaS。1000用户就能做到月入一万美金。",
+            "media": [
+                {
+                    "src": "project5_title.html",
+                    "words": "第五",
+                    "transitionIn": "slide2Left",
+                    "stayInClip": true
+                },
+                {
+                    "src": "project5_tasks.html",
+                    "words": "它负责客服回复",
+                    "transitionIn": "slideUp",
+                    "stayInClip": true
+                },
+                {
+                    "src": "project5_revenue.html",
+                    "words": "1000用户就能做到",
+                    "transitionIn": "zoom"
+                }
+            ]
+        },
+        {
+            "type": "footage",
+            "speech": "一个重要现实：OpenClaw本质是AI员工操作系统。赚钱项目就是：自动员工加生意模型。2026收入潜力最高的是AI自动SaaS和外包工作室。如果你想知道一个人用 OpenClaw 做到月入一万的完整架构，请持续关注！",
+            "media": [
+                {
+                    "src": "conclusion_formula.html",
+                    "words": "一个重要现实",
+                    "stayInClip": true
+                },
+                {
+                    "src": "conclusion_ranking.html",
+                    "words": "2026收入潜力最高",
+                    "transitionIn": "slideUp",
+                    "stayInClip": true
+                },
+                {
+                    "src": "conclusion_cta.html",
+                    "words": "如果你想知道",
+                    "transitionIn": "zoom"
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --t: 0;
+        }
+
+        body {
+            margin: 0;
+            width: 1080px;
+            height: 1920px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .card {
+            width: 85%;
+            background: rgba(15, 23, 42, 0.7);
+            border: 2px solid rgba(234, 179, 8, 0.5);
+            border-radius: 40px;
+            padding: 60px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 0 40px rgba(234, 179, 8, 0.2);
+
+            --start: 0.1;
+            --duration: 0.8;
+            --p: clamp(0, calc((var(--t) - var(--start)) / var(--duration)), 1);
+            --ease-out: calc(1 - (1 - var(--p)) * (1 - var(--p)));
+
+            opacity: var(--ease-out);
+            transform: scale(calc(0.9 + 0.1 * var(--ease-out)));
+        }
+
+        .header {
+            font-size: 70px;
+            font-weight: 800;
+            color: #facc15;
+            margin-bottom: 20px;
+        }
+
+        .title {
+            font-size: 85px;
+            font-weight: bold;
+            margin-bottom: 50px;
+            background: linear-gradient(to right, #ffffff, #fef08a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .image-container {
+            width: 100%;
+            height: 500px;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 40px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+
+            --img-start: 1;
+            --img-dur: 1;
+            --img-p: clamp(0, calc((var(--t) - var(--img-start)) / var(--img-dur)), 1);
+            --img-ease: calc(1 - (1 - var(--img-p)) * (1 - var(--img-p)));
+
+            opacity: var(--img-ease);
+            transform: translateY(calc((1 - var(--img-ease)) * 30px));
+        }
+
+        .image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+
+            --b-start: 2;
+            --b-dur: 0.8;
+            --b-p: clamp(0, calc((var(--t) - var(--b-start)) / var(--b-dur)), 1);
+            --b-ease: calc(1 - (1 - var(--b-p)) * (1 - var(--b-p)));
+
+            opacity: var(--b-ease);
+        }
+
+        .badge {
+            background: linear-gradient(135deg, rgba(234, 179, 8, 0.8), rgba(202, 138, 4, 0.8));
+            padding: 20px 40px;
+            border-radius: 40px;
+            font-size: 40px;
+            font-weight: bold;
+        }
+
+        .revenue {
+            margin-top: 60px;
+            text-align: center;
+            font-size: 65px;
+            font-weight: 800;
+            color: #4ade80;
+            text-shadow: 0 0 30px rgba(74, 222, 128, 0.5);
+
+            --r-start: 3;
+            --r-dur: 0.5;
+            --r-p: clamp(0, calc((var(--t) - var(--r-start)) / var(--r-dur)), 1);
+            --r-ease: calc(1 - (1 - var(--r-p)) * (1 - var(--r-p)));
+            opacity: var(--r-ease);
+            transform: scale(calc(0.8 + 0.2 * var(--r-ease)));
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <div class="header">05</div>
+        <div class="title">AI 自动 SaaS 运营</div>
+
+        <div class="image-container">
+            <img src="https://embed-ssl.wistia.com/deliveries/90af08cc200638d4c9e81004c725f2f0.jpg?image_crop_resized=640x360"
+                alt="SaaS Dashboard">
+        </div>
+
+        <div class="badges">
+            <div class="badge">客服回复</div>
+            <div class="badge">写文档</div>
+            <div class="badge">社媒运营</div>
+        </div>
+
+        <div class="revenue">
+            1个独立开发者<br>1个月入一万美金
+        </div>
+    </div>
+</body>
+
+</html>

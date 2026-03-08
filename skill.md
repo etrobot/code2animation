@@ -1,4 +1,4 @@
-# AgentSaaS Video Editor Skill
+# Code2Animation Video Editor Skill
 
 A comprehensive video editing and rendering skill that enables AI agents to create code-driven animations with text-to-speech narration and smooth transitions.
 
@@ -63,7 +63,233 @@ This skill allows agents to:
 - **Easing**: slide2Left and slideUp use easeOutCubic for smooth deceleration
 
 ### Reference Implementation
-See `public/projects/agentSaasPromoVideo.json` for a complete working example demonstrating all transition types and stayInClip behavior.
+See `public/projects/openclaw_projects.json` for a complete working example demonstrating multi-media clips, stayInClip layering, and all transition types.
+
+---
+
+## Video Creation Best Practices
+
+These are hard-won lessons from real production experience. Follow them strictly.
+
+### 1. Split Media into Granular HTML Files
+
+**DO NOT** put all content for a clip into a single HTML file. This creates a "slideshow" look.
+
+**Instead**, break each clip into 2–3 separate HTML media files, each covering a different region of the screen:
+
+```json
+{
+  "type": "footage",
+  "speech": "...",
+  "media": [
+    { "src": "project1_title.html",    "words": "第一",       "transitionIn": "slide2Left", "stayInClip": true },
+    { "src": "project1_workflow.html", "words": "一个YouTuber", "transitionIn": "zoom",      "stayInClip": true },
+    { "src": "project1_stats.html",    "words": "结果5天",     "transitionIn": "slideUp" }
+  ]
+}
+```
+
+Each HTML file uses **absolute positioning** to place itself in a specific area within the canvas:
+
+```html
+<style>
+  :root { --t: 0; }
+  body { margin: 0; width: 1080px; height: 1920px; /* portrait */ }
+  .header-container {
+    position: absolute;
+    top: 200px;  /* Title at the top area */
+    width: 100%;
+  }
+</style>
+```
+
+Use `stayInClip: true` on earlier media so content accumulates as new media slides in on top.
+
+### 2. Never Duplicate Entrance Animations
+
+**The transition system (`transitionIn`) handles entrance effects.** Do NOT add fade-in, slide-in, or scale-up animations inside HTML files — they will conflict with `transitionIn` and look chaotic.
+
+🚫 **Wrong** — HTML has its own fade-in that conflicts with `transitionIn: "zoom"`:
+```css
+.card {
+  --p: clamp(0, calc((var(--t) - 0.1) / 0.8), 1);
+  opacity: var(--p);
+  transform: scale(calc(0.9 + 0.1 * var(--p)));
+}
+```
+
+✅ **Correct** — HTML is fully visible, `transitionIn` handles the entrance:
+```css
+.card {
+  opacity: 1;
+  /* No entrance animation here — transitionIn handles it */
+}
+```
+
+Only use CSS `--t` animations for **content-internal** effects (e.g., a counter ticking up, text highlighting), not for entrance/exit.
+
+### 3. Use Inline SVG Icons, Not Emojis
+
+Emojis look unprofessional in rendered video. Use inline SVG icons instead:
+
+🚫 **Wrong**:
+```html
+<span class="icon">🤖</span> 自动选题
+```
+
+✅ **Correct**:
+```html
+<span class="icon">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round" style="width: 1em; height: 1em;">
+    <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+    <rect x="9" y="9" width="6" height="6"></rect>
+    <!-- ... more path data -->
+  </svg>
+</span> 自动选题
+```
+
+Use Lucide/Feather-style SVGs for a clean, modern look.
+
+### 4. Do Not Use External Product Images
+
+Never hotlink images from third-party SaaS products (n8n, Stackby, etc.) as background or illustration unless the video is specifically about that product. It looks like free advertising for unrelated brands.
+
+If an image is needed, either:
+- use unsplash images
+- Use abstract/decorative elements in CSS (gradients, borders, shapes)
+- Use text-based layouts (cards, grids, tables) which render crisply
+
+### 5. Video Backgrounds: Let Them Play Naturally
+
+For decorative background videos (e.g., ambient loops), **never try to sync `video.currentTime` with the timeline**. Setting `currentTime` every frame triggers expensive async seeking that causes choppy playback in both preview and render modes.
+
+✅ **Correct** — just let it autoplay (ensure source is 30fps):
+```html
+<video autoplay loop muted playsinline preload="auto" src="/video/bg.mp4"></video>
+```
+
+⚠️ **Important**: Background video source should be converted to **30fps** to avoid frame skipping, but this alone DOES NOT fix the rendering speed issue:
+```bash
+ffmpeg -i input.mp4 -r 30 -c:v libx264 -crf 18 output_30fps.mp4
+```
+
+**The 4x Speed Drift Problem & Solution:**
+During Puppeteer rendering, the browser takes roughly ~4x longer to process each frame than real-time (due to screenshots and I/O). However, background videos with `autoplay` continue playing in real-time "wall-clock" speed in the background. As a result, when you render 30 frames (1 second of timeline), the video has actually played for ~4 seconds in real-time. This creates a 4x fast-forward effect in the final rendered video.
+
+To perfectly compensate for this, you MUST inject a script that detects render mode and slows down the video `playbackRate` to ~`0.25`:
+
+```html
+<script>
+    try {
+        // IFRAME context: Must use window.parent to correctly detect ?record=true
+        if (new URLSearchParams(window.parent.location.search).get('record') === 'true') {
+            document.querySelector('video').playbackRate = 0.25;
+        }
+    } catch (e) {}
+</script>
+```
+
+🚫 **Wrong** — controlling currentTime causes stuttering:
+```js
+window.onTimelineUpdate = (t) => {
+  vid.currentTime = t % vid.duration; // DON'T DO THIS
+};
+```
+
+### 6. Seamless Video Loops with Ping-Pong
+
+Short video clips often have a visible "jump" when they loop. Fix this by creating a **ping-pong version** (forward + reverse):
+
+```bash
+# Step 1: Reverse the video
+ffmpeg -y -i input.mp4 -vf "reverse" -af "areverse" /tmp/reversed.mp4
+
+# Step 2: Concat forward + reverse
+ffmpeg -y -f concat -safe 0 \
+  -i <(echo "file '$(pwd)/input.mp4'" && echo "file '/tmp/reversed.mp4'") \
+  -c:v libx264 -preset fast -crf 18 -pix_fmt yuv420p -r 30 -an output_pingpong.mp4
+```
+
+Then use the 30fps ping-pong file as the loop source. The last frame of the forward pass is identical to the first frame of the reverse pass, so the loop is perfectly seamless.
+
+### 7. Background HTML Structure
+
+The `background` property in the project JSON points to an HTML file that renders behind all media. For video backgrounds:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <style>
+        :root { --t: 0; }
+        body { margin: 0; width: 1080px; height: 1920px; background-color: black; }
+        video {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover; z-index: 1;
+            opacity: 0.5; /* dim so foreground text stands out */
+        }
+    </style>
+</head>
+<body>
+    <video autoplay loop muted playsinline preload="auto" src="/video/myBackground.mp4"></video>
+    <script>
+        try {
+            if (new URLSearchParams(window.parent.location.search).get('record') === 'true') {
+                document.querySelector('video').playbackRate = 0.25;
+            }
+        } catch (e) {}
+    </script>
+</body>
+</html>
+```
+
+### 8. HTML Media File Template
+
+Every media HTML file should follow this structure:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root { --t: 0; }
+        body {
+            margin: 0;
+            width: 1080px;  /* portrait */
+            height: 1920px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            overflow: hidden;
+            position: relative;
+        }
+        .content {
+            position: absolute;
+            top: 200px;     /* position within the canvas */
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            /* styling... */
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <!-- Content here -->
+    </div>
+</body>
+</html>
+```
+
+Key rules:
+- **Always set** `body` to match canvas dimensions (1080×1920 portrait or 1920×1080 landscape)
+- **Use `position: absolute`** to place content in a specific screen region
+- **No entrance animations** — let `transitionIn` handle that
+- **No background colors on body** — the global background HTML handles that
+
+---
 
 ## Technical Requirements
 
@@ -94,7 +320,7 @@ npx tsx scripts/generate-audio.ts <projectId>
 
 ### Video Rendering
 ```bash
-node scripts/render.js <projectId> [--portrait]
+pnpm render <projectId> [--portrait]
 ```
 - Starts a local Vite dev server
 - Launches Puppeteer to capture frames
@@ -104,6 +330,7 @@ node scripts/render.js <projectId> [--portrait]
 ### FFmpeg Operations
 - Frame encoding: `ffmpeg -framerate 30 -i frames/frame-%05d.jpg -c:v libx264 ...`
 - Audio mixing: `ffmpeg -i video.mp4 -i audio1.mp3 -i audio2.mp3 -filter_complex ...`
+- Video ping-pong: `ffmpeg -vf "reverse"` + concat
 
 ### Browser Detection
 - Uses `which` command to find Chrome/Chromium on Linux/macOS
@@ -171,16 +398,16 @@ public/
 
 ```bash
 # 1. Generate audio for a project
-pnpm generate-audio agentSaasPromoVideo
+pnpm generate-audio openclaw_projects
 
 # 2. Preview in browser
 pnpm dev
 
 # 3. Render final video
-pnpm render agentSaasPromoVideo
+pnpm render openclaw_projects
 
 # 4. Render portrait version
-pnpm render agentSaasPromoVideo --portrait
+pnpm render openclaw_projects --portrait
 ```
 
 ## HTML Animation Guidelines
@@ -215,18 +442,9 @@ When creating HTML animations for video rendering, use the **CSS variable timeli
 - Implicit time from `Date.now()` / `performance.now()` for visual state
 - **Manual entrance transitions**: Don't implement slide/fade in HTML - use `transitionIn` in project config
 - **Fade-out effects**: Elements should not disappear after animation completes. Use `opacity: var(--p)` instead of `opacity: calc(var(--p) * (1 - var(--fade)))` to keep elements visible at their final state.
-
-### Recommended Template
-```css
-.element {
-  --start: 0.5;
-  --duration: 1;
-  --p: clamp(0, calc((var(--t) - var(--start)) / var(--duration)), 1);
-
-  opacity: var(--p);
-  transform: translateY(calc((1 - var(--p)) * 20px));
-}
-```
+- **Emoji icons**: Use inline SVG icons instead
+- **External product images**: Don't hotlink images from unrelated SaaS products
+- **Video `currentTime` manipulation**: Never set `video.currentTime` in `onTimelineUpdate` — causes choppy playback
 
 ### Easing (without transition)
 Use math on progress directly:
@@ -269,6 +487,7 @@ opacity: var(--ease-out);
 - Animation state must not depend on "previous frame".
 - Cross-clip transition visuals should be continuous in both clips.
 - Final frame (`t = totalDuration`) must remain on the last clip (no wrap to first clip).
+- Background videos are an exception — they play naturally and are NOT deterministic (this is acceptable for decorative backgrounds).
 
 ## Limitations
 
@@ -277,6 +496,7 @@ opacity: var(--ease-out);
 - Rendering is CPU-intensive and may take several minutes
 - Maximum TTS text length: ~1000 characters per clip
 - Frame capture requires sufficient disk space
+- Background videos in render mode may not be perfectly time-synced (acceptable for decorative use)
 
 ## Transparency Statement
 

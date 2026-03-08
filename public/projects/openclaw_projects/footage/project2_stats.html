@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --t: 0;
+        }
+
+        body {
+            margin: 0;
+            width: 1080px;
+            height: 1920px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .stats-container {
+            position: absolute;
+            top: 1300px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+        }
+
+        .stat-box {
+            background: rgba(15, 23, 42, 0.8);
+            border: 2px solid rgba(250, 204, 21, 0.4);
+            padding: 40px;
+            border-radius: 30px;
+            text-align: center;
+            width: 350px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .stat-value {
+            font-size: 60px;
+            font-weight: 900;
+            color: #facc15;
+            margin-bottom: 15px;
+        }
+
+        .stat-label {
+            font-size: 35px;
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="stats-container">
+        <div class="stat-box">
+            <div class="stat-value">50-500个</div>
+            <div class="stat-label">单人可运营矩阵站点</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-value">$2k-$20k</div>
+            <div class="stat-label">预估 SEO 广告月收入</div>
+        </div>
+    </div>
+</body>
+
+</html>

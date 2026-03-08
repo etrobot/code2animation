@@ -1,0 +1,738 @@
+[
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 1000000,
+          "Duration": 2125000,
+          "text": {
+            "Text": "第",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 3125000,
+          "Duration": 2125000,
+          "text": {
+            "Text": "四",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 8125000,
+          "Duration": 3125000,
+          "text": {
+            "Text": "AI",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 11375000,
+          "Duration": 3625000,
+          "text": {
+            "Text": "线索",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 15125000,
+          "Duration": 4000000,
+          "text": {
+            "Text": "抓取",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 21000000,
+          "Duration": 1625000,
+          "text": {
+            "Text": "这",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 22625000,
+          "Duration": 1250000,
+          "text": {
+            "Text": "是",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 24000000,
+          "Duration": 5250000,
+          "text": {
+            "Text": "B2B",
+            "Length": 3,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 30250000,
+          "Duration": 4500000,
+          "text": {
+            "Text": "赚钱",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 34875000,
+          "Duration": 3875000,
+          "text": {
+            "Text": "利器",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 44500000,
+          "Duration": 5625000,
+          "text": {
+            "Text": "OpenClaw",
+            "Length": 8,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 51125000,
+          "Duration": 2625000,
+          "text": {
+            "Text": "可以",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 53875000,
+          "Duration": 3250000,
+          "text": {
+            "Text": "浏览",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 57250000,
+          "Duration": 3750000,
+          "text": {
+            "Text": "网站",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 63000000,
+          "Duration": 4125000,
+          "text": {
+            "Text": "抓取",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 67250000,
+          "Duration": 3250000,
+          "text": {
+            "Text": "企业",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 70625000,
+          "Duration": 4625000,
+          "text": {
+            "Text": "信息",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 76750000,
+          "Duration": 2250000,
+          "text": {
+            "Text": "找",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 79000000,
+          "Duration": 4000000,
+          "text": {
+            "Text": "邮箱",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 85125000,
+          "Duration": 2375000,
+          "text": {
+            "Text": "写",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 87500000,
+          "Duration": 4375000,
+          "text": {
+            "Text": "销售",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 92000000,
+          "Duration": 3875000,
+          "text": {
+            "Text": "邮件",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 101625000,
+          "Duration": 3375000,
+          "text": {
+            "Text": "最终",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 105125000,
+          "Duration": 4000000,
+          "text": {
+            "Text": "生成",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 109375000,
+          "Duration": 4000000,
+          "text": {
+            "Text": "潜在",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 113500000,
+          "Duration": 3625000,
+          "text": {
+            "Text": "客户",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 117250000,
+          "Duration": 4125000,
+          "text": {
+            "Text": "列表",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 122500000,
+          "Duration": 2000000,
+          "text": {
+            "Text": "并",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 124625000,
+          "Duration": 4625000,
+          "text": {
+            "Text": "自动",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 129375000,
+          "Duration": 4250000,
+          "text": {
+            "Text": "外联",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 139375000,
+          "Duration": 2000000,
+          "text": {
+            "Text": "卖",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 141500000,
+          "Duration": 3250000,
+          "text": {
+            "Text": "线索",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 144875000,
+          "Duration": 3500000,
+          "text": {
+            "Text": "数据",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 149500000,
+          "Duration": 3750000,
+          "text": {
+            "Text": "或者",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 153375000,
+          "Duration": 2250000,
+          "text": {
+            "Text": "代",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 155625000,
+          "Duration": 2000000,
+          "text": {
+            "Text": "做",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 157875000,
+          "Duration": 5250000,
+          "text": {
+            "Text": "B2B",
+            "Length": 3,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 163250000,
+          "Duration": 4250000,
+          "text": {
+            "Text": "获客",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 170625000,
+          "Duration": 3625000,
+          "text": {
+            "Text": "一套",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 174500000,
+          "Duration": 3375000,
+          "text": {
+            "Text": "客户",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 178000000,
+          "Duration": 3750000,
+          "text": {
+            "Text": "名单",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 182750000,
+          "Duration": 2375000,
+          "text": {
+            "Text": "可以",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 185250000,
+          "Duration": 1875000,
+          "text": {
+            "Text": "卖",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 187125000,
+          "Duration": 1750000,
+          "text": {
+            "Text": "到",
+            "Length": 1,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 189125000,
+          "Duration": 4375000,
+          "text": {
+            "Text": "数千",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  },
+  {
+    "Metadata": [
+      {
+        "Type": "WordBoundary",
+        "Data": {
+          "Offset": 193625000,
+          "Duration": 3750000,
+          "text": {
+            "Text": "美元",
+            "Length": 2,
+            "BoundaryType": "WordBoundary"
+          }
+        }
+      }
+    ]
+  }
+]

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --t: 0;
+        }
+
+        body {
+            margin: 0;
+            width: 1080px;
+            height: 1920px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .container {
+            position: absolute;
+            top: 900px;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .subtitle {
+            font-size: 55px;
+            font-weight: 500;
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 50px 80px;
+            border-radius: 40px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .highlight {
+            color: #60a5fa;
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="subtitle">这些并不是“概念”<br><br>而是开发者已经<span class="highlight">跑通的模式</span></div>
+    </div>
+</body>
+
+</html>

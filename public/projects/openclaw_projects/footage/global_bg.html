@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Background</title>
+    <style>
+        :root {
+            --t: 0;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 1080px;
+            height: 1920px;
+            background-color: black;
+        }
+
+        video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+
+<body>
+    <video autoplay loop muted playsinline preload="auto" src="/video/shrimpDancingPingPong.mp4"></video>
+    <script>
+        // Use window.parent since this runs in an iframe.
+        // During Puppeteeer render, the video "runs away" at wall speed while frames render slowly.
+        // We set it to 0.25 to compensate for the roughly ~4x render slowdown ratio.
+        try {
+            if (new URLSearchParams(window.parent.location.search).get('record') === 'true') {
+                document.querySelector('video').playbackRate = 0.25;
+            }
+        } catch (e) { }
+    </script>
+</body>
+
+</html>

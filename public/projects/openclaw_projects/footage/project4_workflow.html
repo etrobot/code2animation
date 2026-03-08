@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --t: 0;
+        }
+
+        body {
+            margin: 0;
+            width: 1080px;
+            height: 1920px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .workflow-container {
+            position: absolute;
+            top: 550px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 85%;
+            background: rgba(15, 23, 42, 0.7);
+            border: 2px solid rgba(236, 72, 153, 0.5);
+            border-radius: 40px;
+            padding: 60px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 0 40px rgba(236, 72, 153, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .workflow-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 25px;
+            border-radius: 20px;
+            font-size: 40px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .arrow {
+            text-align: center;
+            font-size: 50px;
+            color: #f472b6;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="workflow-container">
+        <div class="workflow-item">1. 自动浏览目标网站</div>
+        <div class="arrow">↓</div>
+        <div class="workflow-item">2. 抓取企业邮箱与核心人员</div>
+        <div class="arrow">↓</div>
+        <div class="workflow-item">3. AI 生成定制化销售邮件</div>
+        <div class="arrow">↓</div>
+        <div class="workflow-item">4. 自动化 Outbound 外联</div>
+    </div>
+</body>
+
+</html>
